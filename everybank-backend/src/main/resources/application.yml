@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: everybank
+
+  # PostgreSQL 연결설정
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRESQL_PORT}/${POSTGRESQL_DBNAME}
+    username: ${POSTGRESQL_USERNAME}
+    password: ${POSTGRESQL_PASSWORD}
+    driver-class-name: org.postgresql.Driver  # PostgreSQL 드라이버 명시
+
+  # JPA 설정
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true                    # SQL 쿼리 로깅
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true              # SQL 포맷팅
+
+  # Redis 연결설정
+#  redis:
+#    host: ${REDIS_URL}
+#    port: ${REDIS_PORT}
+#    password: ${REDIS_PASSWORD}
+#    timeout: 3000                     # 연결 타임아웃
+
+# 서버 포트 설정
+server:
+  port: 8080
+
+# 로깅 설정
+logging:
+  level:
+    com.everybank: DEBUG
