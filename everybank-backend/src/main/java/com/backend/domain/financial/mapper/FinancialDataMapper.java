@@ -3,10 +3,10 @@ package com.backend.domain.financial.mapper;
 import com.backend.domain.company.domain.FinCompany;
 import com.backend.domain.company.dto.CompanyDto;
 import com.backend.domain.product.domain.*;
-import com.backend.domain.product.dto.DepositProductDto;
-import com.backend.domain.product.dto.DepositProductOptionDto;
-import com.backend.domain.product.dto.SavingProductDto;
-import com.backend.domain.product.dto.SavingProductOptionDto;
+import com.backend.domain.financial.api.dto.DepositProductDto;
+import com.backend.domain.financial.api.dto.DepositProductOptionDto;
+import com.backend.domain.financial.api.dto.SavingProductDto;
+import com.backend.domain.financial.api.dto.SavingProductOptionDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

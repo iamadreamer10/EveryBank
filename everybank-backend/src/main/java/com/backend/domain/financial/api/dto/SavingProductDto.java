@@ -1,4 +1,4 @@
-package com.backend.domain.product.dto;
+package com.backend.domain.financial.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

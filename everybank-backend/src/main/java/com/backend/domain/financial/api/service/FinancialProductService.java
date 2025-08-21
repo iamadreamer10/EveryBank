@@ -6,10 +6,10 @@ import com.backend.domain.financial.api.dto.FinancialApiResponse;
 import com.backend.domain.financial.mapper.FinancialDataMapper;
 import com.backend.domain.company.repository.FinCompanyRepository;
 import com.backend.domain.product.domain.*;
-import com.backend.domain.product.dto.DepositProductDto;
-import com.backend.domain.product.dto.DepositProductOptionDto;
-import com.backend.domain.product.dto.SavingProductDto;
-import com.backend.domain.product.dto.SavingProductOptionDto;
+import com.backend.domain.financial.api.dto.DepositProductDto;
+import com.backend.domain.financial.api.dto.DepositProductOptionDto;
+import com.backend.domain.financial.api.dto.SavingProductDto;
+import com.backend.domain.financial.api.dto.SavingProductOptionDto;
 import com.backend.domain.product.repository.DepositProductOptionRepository;
 import com.backend.domain.product.repository.DepositProductRepository;
 import com.backend.domain.product.repository.SavingProductOptionRepository;
@@ -47,6 +47,8 @@ public class FinancialProductService {
     private String apiKey;
 
     public void loadAllData() {
+        deleteAllData();
+
         // 1. 금융회사 정보 먼저 로드
         loadCompanies();
 
@@ -56,6 +58,18 @@ public class FinancialProductService {
         // 3. 적금상품 로드
         loadSavingProducts();
         updateSavingMainRates();
+    }
+
+    @Transactional
+    public void deleteAllData() {
+        // 외래키 순서에 맞춰 자식부터 삭제
+        depositOptionRepository.deleteAll();
+        savingOptionRepository.deleteAll();
+        depositProductRepository.deleteAll();
+        savingProductRepository.deleteAll();
+        finCompanyRepository.deleteAll();
+
+        System.out.println("모든 데이터 삭제 완료");
     }
 
     private void loadCompanies() {
