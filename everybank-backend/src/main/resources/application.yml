@@ -20,11 +20,20 @@ spring:
         format_sql: true              # SQL 포맷팅
 
   # Redis 연결설정
-#  redis:
-#    host: ${REDIS_URL}
-#    port: ${REDIS_PORT}
-#    password: ${REDIS_PASSWORD}
-#    timeout: 3000                     # 연결 타임아웃
+  redis:
+    data:
+      host: ${REDIS_URL}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: 3000                     # 연결 타임아웃
+
+
+
+# 금융감독원 openAPI 설정
+finlifeapi:
+    url: ${FIN_URL}
+    auth: ${FIN_AUTH}
+
 
 # 서버 포트 설정
 server:
