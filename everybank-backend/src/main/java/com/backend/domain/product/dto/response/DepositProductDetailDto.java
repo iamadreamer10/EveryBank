@@ -1,4 +1,4 @@
-package com.backend.domain.product.dto;
+package com.backend.domain.product.dto.response;
 
 import com.backend.domain.product.domain.DepositProduct;
 import lombok.Data;

@@ -2,8 +2,8 @@ package com.backend.domain.product.controller;
 
 import com.backend.domain.product.domain.DepositProduct;
 import com.backend.domain.product.domain.SavingProduct;
-import com.backend.domain.product.dto.DepositProductDetailDto;
-import com.backend.domain.product.dto.SavingProductDetailDto;
+import com.backend.domain.product.dto.response.DepositProductDetailDto;
+import com.backend.domain.product.dto.response.SavingProductDetailDto;
 import com.backend.domain.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

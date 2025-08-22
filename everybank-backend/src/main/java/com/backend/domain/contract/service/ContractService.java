@@ -1,0 +1,179 @@
+package com.backend.domain.contract.service;
+
+import com.backend.domain.account.domain.Account;
+import com.backend.domain.account.domain.AccountState;
+import com.backend.domain.account.domain.AccountType;
+import com.backend.domain.account.repository.AccountRepository;
+import com.backend.domain.contract.domain.ContractCondition;
+import com.backend.domain.contract.domain.DepositContract;
+import com.backend.domain.contract.domain.SavingContract;
+import com.backend.domain.contract.dto.*;
+import com.backend.domain.contract.repository.DepositContractRepository;
+import com.backend.domain.contract.repository.SavingContractRepository;
+import com.backend.domain.product.domain.DepositProduct;
+import com.backend.domain.product.domain.DepositProductOption;
+import com.backend.domain.product.domain.SavingProduct;
+import com.backend.domain.product.domain.SavingProductOption;
+import com.backend.domain.product.repository.DepositProductOptionRepository;
+import com.backend.domain.product.repository.DepositProductRepository;
+import com.backend.domain.product.repository.SavingProductOptionRepository;
+import com.backend.domain.product.repository.SavingProductRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ContractService {
+
+    private final DepositContractRepository depositContractRepository;
+    private final DepositProductOptionRepository depositProductOptionRepository;
+    private final DepositProductRepository depositProductRepository;
+    private final SavingProductOptionRepository savingProductOptionRepository;
+    private final SavingProductRepository savingProductRepository;
+    private final SavingContractRepository savingContractRepository;
+    private final AccountRepository accountRepository;
+
+    public DepositSubscriptionResponseDto subscribeDeposit(DepositSubscriptionRequestDto requestDto) {
+        LocalDate currentDate = LocalDate.now();
+
+        // 1. 검증
+        DepositProductOption option = depositProductOptionRepository.findById(requestDto.getOptionId())
+                .orElseThrow(() -> new RuntimeException("옵션을 찾을 수 없습니다: " + requestDto.getOptionId()));
+
+        DepositProduct product = validateAndGetDepositProduct(requestDto.getProductCode());
+        LocalDate maturityDate = currentDate.plusMonths(option.getSaveTerm());
+
+        // 2. 계좌 생성
+        Account account = createAccount(1L, product.getCompanyCode(), maturityDate, AccountType.DEPOSIT);
+
+        // 3. 정기예금 계약 생성
+        DepositContract depositContract = DepositContract.builder()
+                .userId(account.getUserId())
+                .depositProduct(product)
+                .contractDate(currentDate)
+                .maturityDate(maturityDate)
+                .depositProductOption(option)
+                .payment(account.getCurrentBalance())
+                .contractCondition(ContractCondition.IN_PROGRESS)
+                .accountId(account.getId())
+                .build();
+        depositContractRepository.save(depositContract);
+
+        return DepositSubscriptionResponseDto.builder()
+                .contractId(depositContract.getContractId())
+                .userId(depositContract.getUserId())
+                .nickname("임시닉네임")
+                .productName(product.getProductName())
+                .productCode(product.getProductCode())
+                .totalAmount(depositContract.getPayment())
+                .contractDate(depositContract.getContractDate())
+                .option(convertToDepositDto(option))
+                .companyName(product.getCompanyName())
+                .maturityDate(depositContract.getMaturityDate())
+                .build();
+    }
+
+    public SavingSubscriptionResponseDto subscribeSaving(SavingSubscriptionRequestDto requestDto) {
+        LocalDate currentDate = LocalDate.now();
+
+        // 1. 검증
+        SavingProductOption option = savingProductOptionRepository.findById(requestDto.getOptionId())
+                .orElseThrow(() -> new RuntimeException("옵션을 찾을 수 없습니다: " + requestDto.getOptionId()));
+
+        SavingProduct product = validateAndGetSavingProduct(requestDto.getProductCode());
+        LocalDate maturityDate = currentDate.plusMonths(option.getSaveTerm());
+
+        // 2. 계좌 생성
+        Account account = createAccount(1L, product.getCompanyCode(), maturityDate, AccountType.SAVING);
+
+        // 3. 적금 계약 생성
+        SavingContract savingContract = SavingContract.builder()
+                .userId(account.getUserId())
+                .savingProduct(product)
+                .contractDate(currentDate)
+                .maturityDate(maturityDate)
+                .savingProductOption(option)
+                .monthlyPayment(requestDto.getMonthlyAmount())
+                .currentPaymentCount(0)
+                .contractCondition(ContractCondition.IN_PROGRESS)
+                .accountId(account.getId())
+                .build();
+        savingContractRepository.save(savingContract);
+
+        return SavingSubscriptionResponseDto.builder()
+                .contractId(savingContract.getContractId())
+                .userId(savingContract.getUserId())
+                .nickname("임시닉네임")
+                .productName(product.getProductName())
+                .productCode(product.getProductCode())
+                .companyName(product.getCompanyName())
+                .monthlyPayment(savingContract.getMonthlyPayment())
+                .currentPaymentCount(savingContract.getCurrentPaymentCount())
+                .latestPaymentDate(savingContract.getLatestPaymentDate())
+                .contractDate(savingContract.getContractDate())
+                .maturityDate(savingContract.getMaturityDate())
+                .option(convertToSavingDto(option))
+                .build();
+    }
+
+    // 공통 계좌 생성 로직
+    private Account createAccount(Long userId, String companyCode, LocalDate maturityDate, AccountType accountType) {
+        Account account = Account.builder()
+                .userId(userId)
+                .companyCode(companyCode)
+                .currentBalance(0L)
+                .accountState(AccountState.ACTIVE)
+                .lastTransactionDate(LocalDateTime.now())
+                .maturityDate(maturityDate)
+                .accountType(accountType)
+                .build();
+        return accountRepository.save(account);
+    }
+
+    // 검증 로직 분리
+    private DepositProduct validateAndGetDepositProduct(String productCode) {
+        DepositProduct product = depositProductRepository.findByProductCode(productCode);
+        if (product == null) {
+            throw new RuntimeException("상품을 찾을 수 없습니다: " + productCode);
+        }
+        return product;
+    }
+
+    private SavingProduct validateAndGetSavingProduct(String productCode) {
+        SavingProduct product = savingProductRepository.findByProductCode(productCode);
+        if (product == null) {
+            throw new RuntimeException("상품을 찾을 수 없습니다: " + productCode);
+        }
+        return product;
+    }
+
+    // DTO 변환 메서드들
+    private DepositProductOptionResponseDto convertToDepositDto(DepositProductOption option) {
+        return DepositProductOptionResponseDto.builder()
+                .id(option.getId())
+                .interestRateType(option.getInterestRateType())
+                .interestRateTypeName(option.getInterestRateTypeName())
+                .saveTerm(option.getSaveTerm())
+                .interestRate(option.getInterestRate())
+                .interestRate2(option.getInterestRate2())
+                .build();
+    }
+
+    private SavingProductOptionResponseDto convertToSavingDto(SavingProductOption option) {
+        return SavingProductOptionResponseDto.builder()
+                .id(option.getId())
+                .interestRateType(option.getInterestRateType())
+                .interestRateTypeName(option.getInterestRateTypeName())
+                .saveTerm(option.getSaveTerm())
+                .reverseType(option.getReverseType())
+                .reverseTypeName(option.getReverseTypeName())
+                .interestRate(option.getInterestRate())
+                .interestRate2(option.getInterestRate2())
+                .build();
+    }
+}
