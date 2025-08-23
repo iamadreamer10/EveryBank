@@ -5,6 +5,8 @@ import com.backend.domain.product.domain.SavingProduct;
 import com.backend.domain.product.dto.response.DepositProductDetailDto;
 import com.backend.domain.product.dto.response.SavingProductDetailDto;
 import com.backend.domain.product.service.ProductService;
+import com.backend.global.common.BaseResponse;
+import com.backend.global.common.code.SuccessCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -21,26 +23,26 @@ public class ProductController {
     private final ProductService productService;
 
     @GetMapping("/deposit")
-    public ResponseEntity<List<DepositProduct>> getDepositList(){
+    public ResponseEntity<BaseResponse<List<DepositProduct>>> getDepositList(){
         List<DepositProduct> allDepositProduct = productService.getDepositProductList();
-        return ResponseEntity.ok(allDepositProduct);
+        return BaseResponse.success(SuccessCode.SELECT_SUCCESS,allDepositProduct);
     }
 
     @GetMapping("/deposit/{productCode}")
-    public ResponseEntity<DepositProductDetailDto> getDepositProduct(@PathVariable String productCode){
+    public ResponseEntity<BaseResponse<DepositProductDetailDto>> getDepositProduct(@PathVariable String productCode){
         DepositProductDetailDto depositProductDetail = productService.getDepositProductDetail(productCode);
-        return ResponseEntity.ok(depositProductDetail);
+        return BaseResponse.success(SuccessCode.SELECT_SUCCESS, depositProductDetail);
     }
 
     @GetMapping("/savings")
-    public ResponseEntity<List<SavingProduct>> getSavingList(){
+    public ResponseEntity<BaseResponse<List<SavingProduct>>> getSavingList(){
         List<SavingProduct> allSavingProduct = productService.getSavingProductList();
-        return ResponseEntity.ok(allSavingProduct);
+        return BaseResponse.success(SuccessCode.SELECT_SUCCESS, allSavingProduct);
     }
 
     @GetMapping("/savings/{productCode}")
-    public ResponseEntity<SavingProductDetailDto> getSavingProduct(@PathVariable String productCode){
+    public ResponseEntity<BaseResponse<SavingProductDetailDto>> getSavingProduct(@PathVariable String productCode){
         SavingProductDetailDto savingProductDetail = productService.getSavingProductDetail(productCode);
-        return ResponseEntity.ok(savingProductDetail);
+        return BaseResponse.success(SuccessCode.SELECT_SUCCESS, savingProductDetail);
     }
 }

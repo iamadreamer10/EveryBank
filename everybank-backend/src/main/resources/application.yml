@@ -12,7 +12,7 @@ spring:
   # JPA 설정
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: true                    # SQL 쿼리 로깅
     properties:
       hibernate:

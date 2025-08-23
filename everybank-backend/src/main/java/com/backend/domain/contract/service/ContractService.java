@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.NoSuchElementException;
 
 @Slf4j
 @Service
@@ -43,13 +44,13 @@ public class ContractService {
 
         // 1. 검증
         DepositProductOption option = depositProductOptionRepository.findById(requestDto.getOptionId())
-                .orElseThrow(() -> new RuntimeException("옵션을 찾을 수 없습니다: " + requestDto.getOptionId()));
+                .orElseThrow(() -> new NoSuchElementException("상품에 맞는 옵션을 찾을 수 없습니다: " + requestDto.getOptionId()));
 
         DepositProduct product = validateAndGetDepositProduct(requestDto.getProductCode());
         LocalDate maturityDate = currentDate.plusMonths(option.getSaveTerm());
 
         // 2. 계좌 생성
-        Account account = createAccount(1L, product.getCompanyCode(), maturityDate, AccountType.DEPOSIT);
+        Account account = createAccount(1L, product.getCompanyCode(), maturityDate, AccountType.DEPOSIT, requestDto.getTotalAmount());
 
         // 3. 정기예금 계약 생성
         DepositContract depositContract = DepositContract.builder()
@@ -83,13 +84,13 @@ public class ContractService {
 
         // 1. 검증
         SavingProductOption option = savingProductOptionRepository.findById(requestDto.getOptionId())
-                .orElseThrow(() -> new RuntimeException("옵션을 찾을 수 없습니다: " + requestDto.getOptionId()));
+                .orElseThrow(() -> new NoSuchElementException("상품에 맞는 옵션을 찾을 수 없습니다: " + requestDto.getOptionId()));
 
         SavingProduct product = validateAndGetSavingProduct(requestDto.getProductCode());
         LocalDate maturityDate = currentDate.plusMonths(option.getSaveTerm());
 
         // 2. 계좌 생성
-        Account account = createAccount(1L, product.getCompanyCode(), maturityDate, AccountType.SAVING);
+        Account account = createAccount(1L, product.getCompanyCode(), maturityDate, AccountType.SAVING, 0L);
 
         // 3. 적금 계약 생성
         SavingContract savingContract = SavingContract.builder()
@@ -122,11 +123,11 @@ public class ContractService {
     }
 
     // 공통 계좌 생성 로직
-    private Account createAccount(Long userId, String companyCode, LocalDate maturityDate, AccountType accountType) {
+    private Account createAccount(Long userId, String companyCode, LocalDate maturityDate, AccountType accountType, Long payment) {
         Account account = Account.builder()
                 .userId(userId)
                 .companyCode(companyCode)
-                .currentBalance(0L)
+                .currentBalance(payment)
                 .accountState(AccountState.ACTIVE)
                 .lastTransactionDate(LocalDateTime.now())
                 .maturityDate(maturityDate)

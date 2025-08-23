@@ -5,6 +5,8 @@ import com.backend.domain.contract.dto.DepositSubscriptionResponseDto;
 import com.backend.domain.contract.dto.SavingSubscriptionRequestDto;
 import com.backend.domain.contract.dto.SavingSubscriptionResponseDto;
 import com.backend.domain.contract.service.ContractService;
+import com.backend.global.common.BaseResponse;
+import com.backend.global.common.code.SuccessCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -23,15 +25,15 @@ public class ContractController {
 
 
     @PostMapping("/deposit")
-    public ResponseEntity<DepositSubscriptionResponseDto> subscribeDeposit(@RequestBody DepositSubscriptionRequestDto requestDto) {
+    public ResponseEntity<BaseResponse<DepositSubscriptionResponseDto>> subscribeDeposit(@RequestBody DepositSubscriptionRequestDto requestDto) {
         DepositSubscriptionResponseDto depositContract = contractService.subscribeDeposit(requestDto);
-        return ResponseEntity.ok(depositContract);
+        return BaseResponse.success(SuccessCode.CREATE_SUCCESS, depositContract);
     }
 
     @PostMapping("/saving")
-    public ResponseEntity<SavingSubscriptionResponseDto> subscribeSaving(@RequestBody SavingSubscriptionRequestDto requestDto) {
+    public ResponseEntity<BaseResponse<SavingSubscriptionResponseDto>> subscribeSaving(@RequestBody SavingSubscriptionRequestDto requestDto) {
         SavingSubscriptionResponseDto savingContract = contractService.subscribeSaving(requestDto);
-        return ResponseEntity.ok(savingContract);
+        return BaseResponse.success(SuccessCode.CREATE_SUCCESS, savingContract);
     }
 
 }
