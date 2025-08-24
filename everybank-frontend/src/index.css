@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+@theme {
+  --color-bank-primary: #5ACCAE;
+  --color-bank-secondary: #5E7F76;
+  --color-bank-accent: #70FFD9;
+  --color-bank-light: #E0F2ED;
+  --color-bank-dark: #387F6C;
+  --color-bank-success: #00C490;
+}

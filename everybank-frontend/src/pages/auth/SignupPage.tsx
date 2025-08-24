@@ -35,11 +35,11 @@ export default function SignupPage() {
                                 value={formData.phone}
                                 onChange={handleInputChange}
                                 placeholder="휴대폰 번호 입력"
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bank-primary focus:border-transparent"
                             />
                             <button
                                 type="button"
-                                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                className="px-4 py-2 bg-bank-primary text-white text-sm font-medium rounded-md hover:bg-bank-dark focus:outline-none focus:ring-2 focus:ring-bank-primary"
                             >
                                 인증번호
                             </button>
@@ -57,7 +57,7 @@ export default function SignupPage() {
                             value={formData.password}
                             onChange={handleInputChange}
                             placeholder="비밀번호 입력"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bank-primary focus:border-transparent"
                         />
                     </div>
 
@@ -73,11 +73,11 @@ export default function SignupPage() {
                                 value={formData.verificationCode}
                                 onChange={handleInputChange}
                                 placeholder="인증번호 입력"
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bank-primary focus:border-transparent"
                             />
                             <button
                                 type="button"
-                                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                className="px-4 py-2 bg-bank-primary text-white text-sm font-medium rounded-md hover:bg-bank-dark focus:outline-none focus:ring-2 focus:ring-bank-primary"
                             >
                                 인증번호
                             </button>
@@ -95,14 +95,14 @@ export default function SignupPage() {
                             value={formData.name}
                             onChange={handleInputChange}
                             placeholder="이름 입력"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bank-primary focus:border-transparent"
                         />
                     </div>
 
                     {/* 제출 버튼 */}
                     <button
                         type="submit"
-                        className="w-full bg-green-600 text-white py-3 px-4 rounded-md font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
+                        className="w-full bg-bank-primary text-white py-3 px-4 rounded-md font-medium hover:bg-bank-dark focus:outline-none focus:ring-2 focus:ring-bank-primary focus:ring-offset-2 transition-colors duration-200"
                     >
                         회원가입
                     </button>

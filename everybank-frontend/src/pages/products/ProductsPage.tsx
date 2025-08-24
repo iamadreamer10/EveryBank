@@ -1,78 +1,98 @@
+import { useState, useEffect } from 'react';
+import ProductTabs from "../../components/products/ProductTabs.tsx";
+import ProductGrid from "../../components/products/ProductGrid.tsx";
+import BankFilter from "../../components/products/BankFilter.tsx";
+import ProductSearchSection from "../../components/products/ProductSearchSection.tsx";
+import type {Product} from "../../types/product.ts";
+
+// API 함수들
+async function fetchDeposits(): Promise<Product[]> {
+    const response = await fetch("http://localhost:8080/product/deposit");
+    if (!response.ok) throw new Error("Failed to fetch deposits");
+    return response.json();
+}
+
+async function fetchSaving(): Promise<Product[]> {
+    const response = await fetch("http://localhost:8080/product/savings");
+    if (!response.ok) throw new Error("Failed to fetch saving");
+    return response.json();
+}
+
 export default function ProductsPage() {
+    const [selectedAmount, setSelectedAmount] = useState('300000');
+    const [selectedPeriod, setSelectedPeriod] = useState('24');
+    const [selectedTab, setSelectedTab] = useState('정기예금상품');
+    const [selectedBank, setSelectedBank] = useState('전체');
+
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let fetchFn: (() => Promise<Product[]>) | null = null;
+
+        if (selectedTab === "정기예금상품") {
+            fetchFn = fetchDeposits;
+        } else if (selectedTab === "적금상품") {
+            fetchFn = fetchSaving;
+        }
+
+        if (fetchFn) {
+            setLoading(true);
+            fetchFn()
+                .then((data) => {
+                    console.log(data.result);
+                    const mappedProducts: Product[] = data.result.map((productApi: any) => ({
+                        productCode: productApi.productCode,
+                        bank: productApi.companyName,
+                        name: productApi.productName,
+                        member: productApi.joinMember,
+                        maxLimit:
+                            productApi.maxLimit === 0 ? "한도없음" : productApi.maxLimit,
+                        rate: productApi.mainRate,
+                    }));
+                    setProducts(mappedProducts);
+                    setError(null);
+                })
+                .catch((err) => setError(err.message))
+                .finally(() => setLoading(false));
+        }
+    }, [selectedTab]);
+
+    const bankTabs = ['전체', '우리은행', '신한은행', '국민은행', '하나은행', '농협은행', '카카오뱅크'];
+
+
+    const handleBankCompare = (bank: string) => {
+        console.log('은행 비교:', bank);
+        if (bank !== '상세비교') {
+            setSelectedBank(bank);
+        }
+    };
+
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="text-center mb-12">
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">상품안내</h1>
-                <div className="bg-blue-100 rounded-lg p-8 mb-8">
-                    <div className="bg-blue-500 text-white rounded-lg p-6">
-                        <h2 className="text-2xl font-bold mb-4">WON플러스예금</h2>
-                        <div className="text-left space-y-2">
-                            <p><span className="font-semibold">상품종류:</span> 정기예금</p>
-                            <p><span className="font-semibold">가입대상:</span> 실명의 개인</p>
-                            <p><span className="font-semibold">가입기간:</span> 1~36개월</p>
-                            <p><span className="font-semibold">가입금액:</span> 1만원 이상</p>
-                        </div>
-                    </div>
-                    <div className="text-right mt-4 text-lg font-semibold text-gray-700">
-                        우리은행
-                    </div>
-                </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <ProductSearchSection
+                selectedAmount={selectedAmount}
+                selectedPeriod={selectedPeriod}
+                onAmountChange={setSelectedAmount}
+                onPeriodChange={setSelectedPeriod}
+                onBankCompare={handleBankCompare}
+            />
 
-                <div className="flex justify-center gap-4 mb-8">
-                    <button className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                        목록으로
-                    </button>
-                    <button className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                        가입하기
-                    </button>
-                </div>
+            <ProductTabs selectedTab={selectedTab} onTabChange={setSelectedTab} />
 
-                <h3 className="text-xl font-bold text-gray-900 mb-6">가입옵션</h3>
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className="min-w-full">
-                        <thead className="bg-green-600 text-white">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-sm font-medium">저축금리유형</th>
-                            <th className="px-6 py-3 text-center text-sm font-medium">단리</th>
-                            <th className="px-6 py-3 text-center text-sm font-medium">단리</th>
-                            <th className="px-6 py-3 text-center text-sm font-medium">단리</th>
-                            <th className="px-6 py-3 text-center text-sm font-medium">단리</th>
-                            <th className="px-6 py-3 text-center text-sm font-medium">단리</th>
-                            <th className="px-6 py-3 text-center text-sm font-medium">단리</th>
-                        </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                        <tr>
-                            <td className="px-6 py-4 bg-green-600 text-white font-medium">저축기간(개월)</td>
-                            <td className="px-6 py-4 text-center">1</td>
-                            <td className="px-6 py-4 text-center">3</td>
-                            <td className="px-6 py-4 text-center">6</td>
-                            <td className="px-6 py-4 text-center">12</td>
-                            <td className="px-6 py-4 text-center">24</td>
-                            <td className="px-6 py-4 text-center">36</td>
-                        </tr>
-                        <tr>
-                            <td className="px-6 py-4 bg-green-600 text-white font-medium">저축금리(%)</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                        </tr>
-                        <tr>
-                            <td className="px-6 py-4 bg-green-600 text-white font-medium">최고우대금리(%)</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                            <td className="px-6 py-4 text-center">2.45</td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>)
+            <BankFilter
+                banks={bankTabs}
+                selectedBank={selectedBank}
+                onBankChange={setSelectedBank}
+            />
+
+            {loading && <p>로딩 중...</p>}
+            {error && <p className="text-red-500">에러: {error}</p>}
+            {!loading && !error && (
+                <ProductGrid products={products} onCompare={(id) => console.log(id)} />
+            )}
+        </div>
+    );
 }
 

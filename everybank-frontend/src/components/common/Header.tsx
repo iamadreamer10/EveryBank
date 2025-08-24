@@ -10,7 +10,7 @@ export default function Header() {
                     <div className="flex-shrink-0">
                         <Link
                             to="/"
-                            className="text-2xl font-bold text-gray-900 hover:text-green-600 transition-colors duration-200"
+                            className="text-2xl font-bold text-gray-900 hover:text-bank-primary transition-colors duration-200"
                         >
                             <img src={logo} alt="로고" className="w-auto h-10 object-contain"/>
                         </Link>
@@ -20,19 +20,19 @@ export default function Header() {
                     <nav className="hidden md:flex space-x-8">
                         <Link
                             to="/products"
-                            className="text-green-600 border-b-2 border-green-600 px-3 py-2 text-sm font-medium"
+                            className="text-bank-primary border-b-2 border-bank-primary px-3 py-2 text-sm font-medium"
                         >
                             금융상품
                         </Link>
                         <Link
                             to="/login"
-                            className="text-gray-700 hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors duration-200"
+                            className="text-gray-700 hover:text-bank-primary px-3 py-2 text-sm font-medium transition-colors duration-200"
                         >
                             로그인
                         </Link>
                         <Link
                             to="/signup"
-                            className="text-gray-700 hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors duration-200"
+                            className="text-gray-700 hover:text-bank-primary px-3 py-2 text-sm font-medium transition-colors duration-200"
                         >
                             회원가입
                         </Link>
@@ -40,10 +40,9 @@ export default function Header() {
 
                     {/* Mobile menu button */}
                     <div className="md:hidden">
-                        <button className="text-gray-700 hover:text-green-600">
+                        <button className="text-gray-700 hover:text-bank-primary">
                             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                      d="M4 6h16M4 12h16M4 18h16"/>
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
                     </div>
