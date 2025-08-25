@@ -1,3 +1,5 @@
+import type {ContractOption} from "./contract.ts";
+
 export interface Product {
     productCode: string;
     bank: string;
@@ -13,11 +15,13 @@ export interface ProductDetail {
     name: string;
     member: string;
     maxLimit: string | number;
-    period: string;
+    period: number[];
     option: ProductOption[] | SavingOption[]
 }
 
+
 export interface ProductOption {
+    id: number;
     saveTerm: number;
     interestRateType: string;
     interestRateTypeName: string;
@@ -28,4 +32,17 @@ export interface ProductOption {
 export interface SavingOption extends ProductOption {
     reverseType: string;
     reverseTypeName: string;
+}
+
+export interface Contract {
+    contractId: number;
+    userId: number;
+    nickname: string;
+    productCode: string;
+    productName: string;
+    companyName: string;
+    totalAmount: number;
+    contractDate: string;  // YYYY-MM-DD
+    maturityDate: string;  // YYYY-MM-DD
+    option: ProductOption | SavingOption;
 }

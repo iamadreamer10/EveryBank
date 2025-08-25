@@ -16,6 +16,7 @@ import com.backend.domain.product.repository.SavingProductOptionRepository;
 import com.backend.domain.product.repository.SavingProductRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -113,6 +115,9 @@ public class FinancialProductService {
         for (DepositProductOptionDto dto : response.getResult().getOptionList()) {
             DepositProduct product = depositProductRepository.findByProductCode(dto.getFinPrdtCd());
             DepositProductOption option = dataMapper.toEntity(dto, product);
+            if (option.getInterestRate2().compareTo(BigDecimal.ZERO) == 0) {
+                option.setInterestRate2(option.getInterestRate());
+            }
             depositOptionRepository.save(option);
         }
 
@@ -144,6 +149,9 @@ public class FinancialProductService {
         for (SavingProductOptionDto dto : response.getResult().getOptionList()) {
             SavingProduct product = savingProductRepository.findByProductCode(dto.getFinPrdtCd());
             SavingProductOption option = dataMapper.toEntity(dto, product);
+            if (option.getInterestRate2().compareTo(BigDecimal.ZERO) == 0) {
+                option.setInterestRate2(option.getInterestRate());
+            }
             savingOptionRepository.save(option);
         }
     }
@@ -163,54 +171,35 @@ public class FinancialProductService {
         List<DepositProduct> products = depositProductRepository.findAll();
 
         for (DepositProduct product : products) {
-            List<DepositProductOption> options = depositOptionRepository.findByDepositProductProductCode(product.getProductCode());
+            List<DepositProductOption> options =
+                    depositOptionRepository.findByDepositProductProductCode(product.getProductCode());
 
-            // 12개월 기준 금리 찾기
+            // 최대 금리 찾기
             BigDecimal mainRate = options.stream()
-                    .filter(opt -> opt.getSaveTerm() == 12)
                     .map(DepositProductOption::getInterestRate2)
                     .filter(rate -> rate != null && rate.compareTo(BigDecimal.ZERO) > 0)
-                    .findFirst()
-                    .orElse(null);
-
-            // 12개월이 없으면 6개월 기준
-            if (mainRate == null) {
-                mainRate = options.stream()
-                        .filter(opt -> opt.getSaveTerm() == 6)
-                        .map(DepositProductOption::getInterestRate2)
-                        .filter(rate -> rate != null && rate.compareTo(BigDecimal.ZERO) > 0)
-                        .findFirst()
-                        .orElse(BigDecimal.ZERO);
-            }
+                    .max(BigDecimal::compareTo)
+                    .orElse(BigDecimal.ZERO);
 
             product.setMainRate(mainRate);
             depositProductRepository.save(product);
         }
     }
 
+
     private void updateSavingMainRates() {
         List<SavingProduct> products = savingProductRepository.findAll();
 
         for (SavingProduct product : products) {
-            List<SavingProductOption> options = savingOptionRepository.findBySavingProductProductCode(product.getProductCode());
+            List<SavingProductOption> options =
+                    savingOptionRepository.findBySavingProductProductCode(product.getProductCode());
 
-            // 12개월 기준 금리 찾기
+            // 최대 금리 찾기
             BigDecimal mainRate = options.stream()
-                    .filter(opt -> opt.getSaveTerm() == 12)
                     .map(SavingProductOption::getInterestRate2)
                     .filter(rate -> rate != null && rate.compareTo(BigDecimal.ZERO) > 0)
-                    .findFirst()
-                    .orElse(null);
-
-            // 12개월이 없으면 6개월 기준
-            if (mainRate == null) {
-                mainRate = options.stream()
-                        .filter(opt -> opt.getSaveTerm() == 6)
-                        .map(SavingProductOption::getInterestRate2)
-                        .filter(rate -> rate != null && rate.compareTo(BigDecimal.ZERO) > 0)
-                        .findFirst()
-                        .orElse(BigDecimal.ZERO);
-            }
+                    .max(BigDecimal::compareTo)
+                    .orElse(BigDecimal.ZERO);
 
             product.setMainRate(mainRate);
             savingProductRepository.save(product);

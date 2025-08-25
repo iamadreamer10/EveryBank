@@ -4,6 +4,7 @@ import ProductGrid from "../../components/products/ProductGrid.tsx";
 import BankFilter from "../../components/products/BankFilter.tsx";
 import ProductSearchSection from "../../components/products/ProductSearchSection.tsx";
 import type {Product} from "../../types/product.ts";
+import type {ApiResponse} from "../../types/api.ts";
 
 // API 함수들
 async function fetchDeposits(): Promise<Product[]> {
@@ -19,8 +20,8 @@ async function fetchSaving(): Promise<Product[]> {
 }
 
 export default function ProductsPage() {
-    const [selectedAmount, setSelectedAmount] = useState('300000');
-    const [selectedPeriod, setSelectedPeriod] = useState('24');
+    // const [selectedAmount, setSelectedAmount] = useState('300000');
+    // const [selectedPeriod, setSelectedPeriod] = useState('24');
     const [selectedTab, setSelectedTab] = useState('정기예금상품');
     const [selectedBank, setSelectedBank] = useState('전체');
 
@@ -40,8 +41,8 @@ export default function ProductsPage() {
         if (fetchFn) {
             setLoading(true);
             fetchFn()
-                .then((data) => {
-                    console.log(data.result);
+                .then((data: ApiResponse<Product[]>) => {
+                    // console.log(data.result);
                     const mappedProducts: Product[] = data.result.map((productApi: any) => ({
                         productCode: productApi.productCode,
                         bank: productApi.companyName,
@@ -69,15 +70,21 @@ export default function ProductsPage() {
         }
     };
 
+    // 탭을 타입으로 매핑
+    const getProductType = (tab: string): 'deposit' | 'savings' => {
+        return tab === '정기예금상품' ? 'deposit' : 'savings';
+    };
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <ProductSearchSection
-                selectedAmount={selectedAmount}
-                selectedPeriod={selectedPeriod}
-                onAmountChange={setSelectedAmount}
-                onPeriodChange={setSelectedPeriod}
-                onBankCompare={handleBankCompare}
-            />
+            <></>
+            {/*<ProductSearchSection*/}
+            {/*    selectedAmount={selectedAmount}*/}
+            {/*    selectedPeriod={selectedPeriod}*/}
+            {/*    onAmountChange={setSelectedAmount}*/}
+            {/*    onPeriodChange={setSelectedPeriod}*/}
+            {/*    onBankCompare={handleBankCompare}*/}
+            {/*/>*/}
 
             <ProductTabs selectedTab={selectedTab} onTabChange={setSelectedTab} />
 
@@ -90,7 +97,10 @@ export default function ProductsPage() {
             {loading && <p>로딩 중...</p>}
             {error && <p className="text-red-500">에러: {error}</p>}
             {!loading && !error && (
-                <ProductGrid products={products} onCompare={(id) => console.log(id)} />
+                <ProductGrid
+                    products={products}
+                    productType={getProductType(selectedTab)}
+                    onCompare={(id) => console.log(id)} />
             )}
         </div>
     );

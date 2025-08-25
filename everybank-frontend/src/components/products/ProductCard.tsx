@@ -3,10 +3,12 @@ import type {Product} from "../../types/product.ts";
 
 interface ProductCardProps {
     product: Product;
+    productType: 'deposits' | 'savings';  // 현재 탭 정보
     onCompare: (productId: string) => void;
 }
 
-export default function ProductCard({product, onCompare}: ProductCardProps) {
+// eslint-disable-next-line react-refresh/only-export-components
+export default function ({ product, productType, onCompare }: ProductCardProps) {
     return (
         <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-4">
@@ -19,7 +21,7 @@ export default function ProductCard({product, onCompare}: ProductCardProps) {
                 </button>
             </div>
 
-            <Link to={`/products/${product.productCode}`} className="block">
+            <Link to={`/products/${productType}/${product.productCode}`}  className="block">
                 <h3 className="font-semibold text-lg text-gray-900 mb-3 hover:text-bank-primary transition-colors">
                     {product.name}
                 </h3>
