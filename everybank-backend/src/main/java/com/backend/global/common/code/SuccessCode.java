@@ -7,6 +7,8 @@ import lombok.Getter;
 public enum SuccessCode {
 
     SELECT_SUCCESS(200, "200", "SELECT SUCCESS"),
+    EMAIL_ALREADY_EXISTS(200, "200", "이미 사용중인 이메일입니다."),
+    EMAIL_AVAILABLE(200, "200", "사용 가능한 이메일입니다."),
 
     // 삭제 성공 코드 (HTTP Response: 200 OK)
     DELETE_SUCCESS(200, "200", "DELETE SUCCESS"),

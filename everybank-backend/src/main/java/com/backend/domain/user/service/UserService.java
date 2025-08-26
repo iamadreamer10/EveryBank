@@ -18,7 +18,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     public UserResponseDto join(UserRequestDto requestDto) {
-        boolean emailChecked = userRepository.existsByEmail(requestDto.getEmail());
+        boolean emailChecked = checkEmail(requestDto.getEmail());
 
         // 이메일이 이미 존재하면 에러 던지기
         if (emailChecked) {
@@ -38,5 +38,10 @@ public class UserService {
 
         user = userRepository.save(user);
         return new UserResponseDto(user);
+    }
+
+
+    public boolean checkEmail(String email) {
+        return userRepository.existsByEmail(email);
     }
 }

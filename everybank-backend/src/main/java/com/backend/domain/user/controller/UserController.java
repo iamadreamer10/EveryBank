@@ -8,10 +8,10 @@ import com.backend.global.common.code.SuccessCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -25,5 +25,13 @@ public class UserController {
     public ResponseEntity<BaseResponse<UserResponseDto>> join(@RequestBody UserRequestDto request){
         UserResponseDto userInfo = userService.join(request);
         return BaseResponse.success(SuccessCode.CREATED_USER, userInfo);
+    }
+
+    @GetMapping("/email_check/{email}")
+    public ResponseEntity<BaseResponse<Map<String, Boolean>>> checkEmail(@PathVariable String email){
+        boolean isExists = userService.checkEmail(email);
+        Map<String, Boolean> response = Map.of("isAvailable", !isExists);
+        SuccessCode status = isExists ? SuccessCode.EMAIL_ALREADY_EXISTS : SuccessCode.EMAIL_AVAILABLE;
+        return BaseResponse.success(status, response);
     }
 }
