@@ -27,6 +27,11 @@ spring:
       password: ${REDIS_PASSWORD}
       timeout: 3000                     # 연결 타임아웃
 
+  security:
+    user:
+      name: user
+      password: 1234
+
 
 
 # 금융감독원 openAPI 설정

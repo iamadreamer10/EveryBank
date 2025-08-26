@@ -17,6 +17,8 @@ public enum SuccessCode {
     // 삽입 성공 코드 (HTTP Response: 201 Created)
     INSERT_SUCCESS(201, "201", "INSERT SUCCESS"),
     CREATE_SUCCESS(201, "201", "CREATE SUCCESS"),
+    CREATED_USER(201, "201", "회원가입 성공"),
+
 
     // 수정 성공 코드 (HTTP Response: 201 Created)
     UPDATE_SUCCESS(201, "201", "UPDATE SUCCESS");
