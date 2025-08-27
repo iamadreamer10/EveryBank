@@ -79,15 +79,16 @@ public class FinancialProductService {
         FinancialApiResponse<CompanyDto, Void> response = webClient.get()
                 .uri(url)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<FinancialApiResponse<CompanyDto, Void>>() {})
+                .bodyToMono(new ParameterizedTypeReference<FinancialApiResponse<CompanyDto, Void>>() {
+                })
                 .timeout(Duration.ofSeconds(30))
                 .block();
 
         for (CompanyDto dto : response.getResult().getBaseList()) {
             FinCompany company = FinCompany.builder()
-                                .companyName(dto.getKorCoNm())
-                                .companyCode(dto.getFinCoNo())
-                                .build();
+                    .companyName(dto.getKorCoNm())
+                    .companyCode(dto.getFinCoNo())
+                    .build();
             finCompanyRepository.save(company);
         }
     }
@@ -97,7 +98,8 @@ public class FinancialProductService {
         FinancialApiResponse<DepositProductDto, DepositProductOptionDto> response = webClient.get()
                 .uri(url)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<FinancialApiResponse<DepositProductDto, DepositProductOptionDto>>() {})
+                .bodyToMono(new ParameterizedTypeReference<FinancialApiResponse<DepositProductDto, DepositProductOptionDto>>() {
+                })
                 .timeout(Duration.ofSeconds(30))
                 .block();
 
@@ -130,7 +132,8 @@ public class FinancialProductService {
         FinancialApiResponse<SavingProductDto, SavingProductOptionDto> response = webClient.get()
                 .uri(url)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<FinancialApiResponse<SavingProductDto, SavingProductOptionDto>>() {})
+                .bodyToMono(new ParameterizedTypeReference<FinancialApiResponse<SavingProductDto, SavingProductOptionDto>>() {
+                })
                 .timeout(Duration.ofSeconds(30))
                 .block();
 
@@ -162,7 +165,8 @@ public class FinancialProductService {
         return webClient.get()
                 .uri(requestUrl)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<FinancialApiResponse<T, O>>() {})
+                .bodyToMono(new ParameterizedTypeReference<FinancialApiResponse<T, O>>() {
+                })
                 .timeout(Duration.ofSeconds(30))
                 .block();
     }

@@ -23,13 +23,13 @@ public class SavingProduct {
     @Column(name = "product_code")
     private String productCode;
 
-    @Column(name = "product_name",nullable = false)
+    @Column(name = "product_name", nullable = false)
     private String productName;
 
-    @Column(name = "company_code",nullable = false)
+    @Column(name = "company_code", nullable = false)
     private String companyCode;
 
-    @Column(name = "company_name",nullable = false)
+    @Column(name = "company_name", nullable = false)
     private String companyName;
 
     @Column(name = "join_member", nullable = false)

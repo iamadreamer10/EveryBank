@@ -33,11 +33,13 @@ spring:
       password: 1234
 
 
+jwt:
+  secret: ${JWT_SECRET}
 
 # 금융감독원 openAPI 설정
 finlifeapi:
-    url: ${FIN_URL}
-    auth: ${FIN_AUTH}
+  url: ${FIN_URL}
+  auth: ${FIN_AUTH}
 
 
 # 서버 포트 설정

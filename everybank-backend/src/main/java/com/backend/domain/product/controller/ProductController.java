@@ -23,25 +23,25 @@ public class ProductController {
     private final ProductService productService;
 
     @GetMapping("/deposit")
-    public ResponseEntity<BaseResponse<List<DepositProduct>>> getDepositList(){
+    public ResponseEntity<BaseResponse<List<DepositProduct>>> getDepositList() {
         List<DepositProduct> allDepositProduct = productService.getDepositProductList();
-        return BaseResponse.success(SuccessCode.SELECT_SUCCESS,allDepositProduct);
+        return BaseResponse.success(SuccessCode.SELECT_SUCCESS, allDepositProduct);
     }
 
     @GetMapping("/deposit/{productCode}")
-    public ResponseEntity<BaseResponse<DepositProductDetailDto>> getDepositProduct(@PathVariable String productCode){
+    public ResponseEntity<BaseResponse<DepositProductDetailDto>> getDepositProduct(@PathVariable String productCode) {
         DepositProductDetailDto depositProductDetail = productService.getDepositProductDetail(productCode);
         return BaseResponse.success(SuccessCode.SELECT_SUCCESS, depositProductDetail);
     }
 
     @GetMapping("/savings")
-    public ResponseEntity<BaseResponse<List<SavingProduct>>> getSavingList(){
+    public ResponseEntity<BaseResponse<List<SavingProduct>>> getSavingList() {
         List<SavingProduct> allSavingProduct = productService.getSavingProductList();
         return BaseResponse.success(SuccessCode.SELECT_SUCCESS, allSavingProduct);
     }
 
     @GetMapping("/savings/{productCode}")
-    public ResponseEntity<BaseResponse<SavingProductDetailDto>> getSavingProduct(@PathVariable String productCode){
+    public ResponseEntity<BaseResponse<SavingProductDetailDto>> getSavingProduct(@PathVariable String productCode) {
         SavingProductDetailDto savingProductDetail = productService.getSavingProductDetail(productCode);
         return BaseResponse.success(SuccessCode.SELECT_SUCCESS, savingProductDetail);
     }

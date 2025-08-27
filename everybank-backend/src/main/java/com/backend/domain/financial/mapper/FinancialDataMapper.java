@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 @Slf4j
 public class FinancialDataMapper {
 
-    public FinCompany toEntity(CompanyDto dto){
+    public FinCompany toEntity(CompanyDto dto) {
         return FinCompany.builder()
                 .companyCode(cleanString(dto.getFinCoNo()))
                 .companyName(cleanString(dto.getKorCoNm()))

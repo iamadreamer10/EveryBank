@@ -32,7 +32,7 @@ public class ProductService {
         return depositProductRepository.findAll();
     }
 
-    public DepositProductDetailDto getDepositProductDetail(String productCode){
+    public DepositProductDetailDto getDepositProductDetail(String productCode) {
         DepositProduct productInfo = depositProductRepository.findByProductCode(productCode);
         List<DepositProductOption> options = depositProductOptionRepository.findByDepositProductProductCode(productCode);
 
@@ -55,7 +55,7 @@ public class ProductService {
         return savingProductRepository.findAll();
     }
 
-    public SavingProductDetailDto getSavingProductDetail(String productCode){
+    public SavingProductDetailDto getSavingProductDetail(String productCode) {
         SavingProduct productInfo = savingProductRepository.findByProductCode(productCode);
         List<SavingProductOption> options = savingProductOptionRepository.findBySavingProductProductCode(productCode);
 

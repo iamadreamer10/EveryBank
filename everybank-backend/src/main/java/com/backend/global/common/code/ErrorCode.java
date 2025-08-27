@@ -6,13 +6,13 @@ import lombok.Getter;
 @Getter
 public enum ErrorCode {
     /**
-     *  * ******************************* Global Error CodeList ***************************************
-     *  * HTTP Status Code
-     *  * 400 : Bad Request
-     *  * 401 : Unauthorized
-     *  * 403 : Forbidden
-     *  * 404 : Not Found
-     *  * 409 : Conflict
+     * * ******************************* Global Error CodeList ***************************************
+     * * HTTP Status Code
+     * * 400 : Bad Request
+     * * 401 : Unauthorized
+     * * 403 : Forbidden
+     * * 404 : Not Found
+     * * 409 : Conflict
      */
 
     // 잘못된 요청
@@ -20,6 +20,7 @@ public enum ErrorCode {
 
     // 권한 없음
     UNAUTHORIZED_ERROR(401, "401", "Unauthorized Exception"),
+    WRONG_EMAIL_OR_PASSWORD(401, "401", "잘못된 이메일/비밀번호 입니다."),
 
     // 금지됨
     FORBIDDEN_ERROR(403, "403", "Forbidden Exception"),

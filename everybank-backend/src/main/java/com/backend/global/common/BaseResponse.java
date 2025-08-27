@@ -17,10 +17,10 @@ public class BaseResponse<T> {
     private int status;
     private String message;
 
-    public static <T> ResponseEntity<BaseResponse<T>> success(SuccessCode successCode, T data){
+    public static <T> ResponseEntity<BaseResponse<T>> success(SuccessCode successCode, T data) {
         return ResponseEntity
                 .status(successCode.getStatus())
-                .body(new BaseResponse<>(data,successCode.getStatus(),successCode.getMessage()));
+                .body(new BaseResponse<>(data, successCode.getStatus(), successCode.getMessage()));
     }
 
     public static <T> ResponseEntity<BaseResponse<T>> error(ErrorCode errorCode, T data) {
