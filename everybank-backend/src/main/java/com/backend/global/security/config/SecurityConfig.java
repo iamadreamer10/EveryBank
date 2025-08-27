@@ -26,8 +26,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         (auth) -> auth
-                                .requestMatchers("/", "/join", "/login", "product/*").permitAll()                                .requestMatchers("/admin").hasRole("ADMIN")
-                                .anyRequest().permitAll()
+                                .requestMatchers("/", "/join", "/login","/email_check/*", "product/**").permitAll()
+                                .requestMatchers("/admin").hasRole("ADMIN")
+                                .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class); // 필터 추가
         ;

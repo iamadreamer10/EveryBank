@@ -20,8 +20,8 @@ spring:
         format_sql: true              # SQL 포맷팅
 
   # Redis 연결설정
-  redis:
-    data:
+  data:
+    redis:
       host: ${REDIS_URL}
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}

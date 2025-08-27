@@ -45,6 +45,7 @@ public class UserController {
             @AuthenticationPrincipal SecurityUser securityUser) {
         log.info("=== LOGOUT ENDPOINT CALLED ===");
         String accessToken = SecurityUtil.getAccessToken(request);
+        log.info("securityUser: {}", securityUser);
         userService.logout(accessToken, securityUser);
         return BaseResponse.success(SuccessCode.LOGOUT_SUCCESS, null);
     }

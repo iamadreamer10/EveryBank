@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 public class JwtTokenProvider {
 
     @Getter
-    private final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 60 * 1000L; // 30분
+    private final long ACCESS_TOKEN_EXPIRE_TIME = 100000 * 60 * 1000L; // 100000분
     @Getter
     private final long REFRESH_TOKEN_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000L; // 7일
 

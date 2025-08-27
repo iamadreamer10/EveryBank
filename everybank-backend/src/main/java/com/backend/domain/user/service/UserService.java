@@ -13,6 +13,7 @@ import com.backend.global.security.provider.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -33,7 +34,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final RedisTemplate redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     public UserResponseDto join(UserRequestDto requestDto) {
         boolean emailChecked = checkEmail(requestDto.getEmail());
@@ -76,13 +77,13 @@ public class UserService {
         tokenMap.put("email", user.getEmail());
         tokenMap.put("nickname", user.getNickname());
 
-//        // redis에 저장
-//        redisTemplate.opsForValue().set(
-//                "refresh:" + user.getEmail(),
-//                tokenMap.get("refresh"),
-//                jwtTokenProvider.getREFRESH_TOKEN_EXPIRE_TIME(),
-//                TimeUnit.MICROSECONDS
-//        );
+        // redis에 저장
+        redisTemplate.opsForValue().set(
+                "refresh:" + user.getEmail(),
+                tokenMap.get("refresh"),
+                jwtTokenProvider.getREFRESH_TOKEN_EXPIRE_TIME(),
+                TimeUnit.MICROSECONDS
+        );
 
         return tokenMap;
 
@@ -90,10 +91,9 @@ public class UserService {
 
     @Transactional
     public void logout(String accessToken, SecurityUser securityUser) {
-//        redisTemplate.delete("refresh:"+securityUser.getEmail());
-//        redisTemplate.opsForValue().set("blackList:"+accessToken, "logout", jwtTokenProvider.getACCESS_TOKEN_EXPIRE_TIME(), TimeUnit.MILLISECONDS);
+        redisTemplate.delete("refresh:"+securityUser.getEmail());
+        redisTemplate.opsForValue().set("blacklist:"+accessToken, "logout", jwtTokenProvider.getACCESS_TOKEN_EXPIRE_TIME(), TimeUnit.MILLISECONDS);
     }
-
 
     public boolean checkEmail(String email) {
         return userRepository.existsByEmail(email);
