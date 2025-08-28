@@ -1,13 +1,43 @@
 import {useState} from 'react';
+import type {SignupRequest} from "../../types/user.ts";
+
+// 이메일 중복 확인 API 함수
+async function checkEmailDuplicate(email: string): Promise<boolean> {
+    console.log(email);
+    const response = await fetch(`http://localhost:8080/email_check/${email}`, {
+        method: 'GET'
+    });
+
+    if (!response.ok) throw new Error('이메일 중복 확인 실패');
+    const result = await response.json();
+    return result.result.isAvailable; // API 응답 구조에 맞게 수정
+}
+
+
+async function signup(userData: SignupRequest): Promise<any> {
+    const response = await fetch('http://localhost:8080/join', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+    });
+
+    if (!response.ok) throw new Error('회원가입 실패');
+    return response.json();
+}
 
 
 export default function SignupPage() {
+
     const [formData, setFormData] = useState({
-        phone: '',
+        email: '',
         password: '',
-        verificationCode: '',
-        name: ''
+        nickname: '',
+        birthdate: ''
     });
+
+    const [emailCheckStatus, setEmailCheckStatus] = useState<'unchecked' | 'checking' | 'available' | 'duplicate'>('unchecked');
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const {name, value} = e.target;
@@ -15,6 +45,50 @@ export default function SignupPage() {
             ...prev,
             [name]: value
         }));
+
+        // 이메일 변경 시 중복 확인 상태 초기화
+        if (name === 'email') {
+            setEmailCheckStatus('unchecked');
+        }
+    };
+
+// form onSubmit 핸들러 추가
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        try {
+            const result = await signup(formData);
+            console.log('회원가입 성공:', result);
+            // 성공 메시지 표시하거나 로그인 페이지로 이동
+        } catch (error) {
+            console.error('회원가입 실패:', error);
+            // 에러 메시지 표시
+        }
+    };
+
+    // 이메일 중복 확인 핸들러
+    const handleEmailCheck = async () => {
+        if (!formData.email) {
+            alert('이메일을 입력해주세요.');
+            return;
+        }
+
+        try {
+            setEmailCheckStatus('checking');
+            const isAvailable = await checkEmailDuplicate(formData.email);
+            console.log("사용 가능: " ,isAvailable);
+            if (!isAvailable) {
+                setEmailCheckStatus('duplicate');
+                alert('이미 사용 중인 이메일입니다.');
+            } else {
+                setEmailCheckStatus('available');
+                alert('사용 가능한 이메일입니다.');
+            }
+        } catch (error) {
+            console.error('이메일 확인 실패:', error);
+            setEmailCheckStatus('unchecked');
+            alert('이메일 확인 중 오류가 발생했습니다.');
+        }
     };
 
     return (
@@ -22,26 +96,32 @@ export default function SignupPage() {
             <div className="bg-white rounded-lg shadow-lg p-8">
                 <h1 className="text-2xl font-bold text-center text-gray-900 mb-8">회원가입</h1>
 
-                <form className="space-y-6">
-                    {/* 휴대폰 번호 */}
+                <form className="space-y-6" onSubmit={handleSubmit}>
+                    {/* 이메일 주소 */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            휴대폰 번호
+                            이메일 주소
                         </label>
                         <div className="flex gap-2">
                             <input
-                                type="tel"
-                                name="phone"
-                                value={formData.phone}
+                                type="email"
+                                name="email"
+                                value={formData.email}
                                 onChange={handleInputChange}
-                                placeholder="휴대폰 번호 입력"
+                                placeholder="이메일 주소 입력"
                                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bank-primary focus:border-transparent"
                             />
                             <button
                                 type="button"
-                                className="px-4 py-2 bg-bank-primary text-white text-sm font-medium rounded-md hover:bg-bank-dark focus:outline-none focus:ring-2 focus:ring-bank-primary"
+                                onClick={handleEmailCheck}
+                                disabled={emailCheckStatus === 'checking'}
+                                className={`px-4 py-2 text-white text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-bank-primary ${
+                                    emailCheckStatus === 'checking'
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-bank-primary hover:bg-bank-dark'
+                                }`}
                             >
-                                인증번호
+                                {emailCheckStatus === 'checking' ? '확인중...' : '이메일 중복'}
                             </button>
                         </div>
                     </div>
@@ -61,41 +141,41 @@ export default function SignupPage() {
                         />
                     </div>
 
-                    {/* 인증번호 확인 */}
+                    {/* 닉네임 확인 */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            인증번호 확인
+                            닉네임
                         </label>
                         <div className="flex gap-2">
                             <input
                                 type="text"
-                                name="verificationCode"
-                                value={formData.verificationCode}
+                                name="nickname"
+                                value={formData.nickname}
                                 onChange={handleInputChange}
-                                placeholder="인증번호 입력"
+                                placeholder="닉네임 입력"
                                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bank-primary focus:border-transparent"
                             />
                             <button
                                 type="button"
                                 className="px-4 py-2 bg-bank-primary text-white text-sm font-medium rounded-md hover:bg-bank-dark focus:outline-none focus:ring-2 focus:ring-bank-primary"
                             >
-                                인증번호
+                                닉네임 중복
                             </button>
                         </div>
                     </div>
 
-                    {/* 이름 */}
+                    {/* 생년월일 */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            이름
+                            생년월일
                         </label>
                         <input
-                            type="text"
-                            name="name"
-                            value={formData.name}
+                            type="date"
+                            name="birthdate"
+                            value={formData.birthdate}
                             onChange={handleInputChange}
-                            placeholder="이름 입력"
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bank-primary focus:border-transparent"
+                            required
                         />
                     </div>
 
