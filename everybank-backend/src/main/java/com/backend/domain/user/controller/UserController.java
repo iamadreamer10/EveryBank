@@ -61,12 +61,23 @@ public class UserController {
     @PatchMapping("/password_change")
     public ResponseEntity<BaseResponse<Void>> changePassword(
             @RequestBody PasswordChangeDto request,
-            @AuthenticationPrincipal SecurityUser securityUser) {
+            @AuthenticationPrincipal SecurityUser securityUser,
+            HttpServletRequest httpRequest) {
 
+        String accessToken = SecurityUtil.getAccessToken(httpRequest);
         log.info("Changing password for user {}", securityUser);
 
         userService.passwordCorrectionCheck(request, securityUser);
-        userService.setPassword(request.getNewPassword(), securityUser.getId());
+        userService.setPassword(request.getNewPassword(), securityUser.getId(), accessToken);
         return BaseResponse.success(SuccessCode.PASSWORD_CHANGE_SUCCESS, null);
+    }
+
+    @DeleteMapping("/delete")
+    public ResponseEntity<BaseResponse<Void>> resignation(@AuthenticationPrincipal SecurityUser securityUser, HttpServletRequest request) {
+        log.info("Delete user {}", securityUser);
+        String accessToken = SecurityUtil.getAccessToken(request);
+        userService.resignation(securityUser);
+        userService.logout(accessToken, securityUser);
+        return BaseResponse.success(SuccessCode.DELETE_SUCCESS, null);
     }
 }

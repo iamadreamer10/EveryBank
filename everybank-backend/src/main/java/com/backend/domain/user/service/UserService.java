@@ -105,10 +105,16 @@ public class UserService {
         }
     }
 
-    public void setPassword(String password, Long id) {
+    public void setPassword(String password, Long id, String accessToken) {
         User user = userRepository.findById(id)
                 .orElseThrow(UserNotFoundException::new);
         user.setPassword(passwordEncoder.encode(password));
+        userRepository.save(user);
+        logout(accessToken, new SecurityUser(user));
+    }
+
+    public void resignation(SecurityUser securityUser){
+        userRepository.deleteById(securityUser.getId());
     }
 
 }
