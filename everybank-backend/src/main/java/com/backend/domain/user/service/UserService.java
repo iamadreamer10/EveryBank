@@ -89,7 +89,7 @@ public class UserService {
 
     }
 
-    @Transactional
+//    @Transactional
     public void logout(String accessToken, SecurityUser securityUser) {
         redisTemplate.delete("refresh:"+securityUser.getEmail());
         redisTemplate.opsForValue().set("blacklist:"+accessToken, "logout", jwtTokenProvider.getACCESS_TOKEN_EXPIRE_TIME(), TimeUnit.MILLISECONDS);
