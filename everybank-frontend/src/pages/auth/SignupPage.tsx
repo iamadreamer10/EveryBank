@@ -1,5 +1,7 @@
 import {useState} from 'react';
 import type {SignupRequest} from "../../types/user.ts";
+import {useNavigate} from "react-router-dom";
+
 
 // 이메일 중복 확인 API 함수
 async function checkEmailDuplicate(email: string): Promise<boolean> {
@@ -29,7 +31,7 @@ async function signup(userData: SignupRequest): Promise<any> {
 
 
 export default function SignupPage() {
-
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -59,6 +61,8 @@ export default function SignupPage() {
         try {
             const result = await signup(formData);
             console.log('회원가입 성공:', result);
+            navigate('/login'); // useNavigate 훅 필요
+
             // 성공 메시지 표시하거나 로그인 페이지로 이동
         } catch (error) {
             console.error('회원가입 실패:', error);

@@ -1,0 +1,113 @@
+[33mcommit 6f115cab40777bcb625c4248e868aee1af9caf64[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Thu Aug 28 17:11:07 2025 +0900
+
+    backend project auth resign
+
+[33mcommit 31abce233c1469a0ad1bf2cf33bc7b562852011c[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Thu Aug 28 17:08:54 2025 +0900
+
+    backend project auth resign
+
+[33mcommit 8606f2c82b440e050c8820ebafa1f1d19f03a847[m[33m ([m[1;31morigin/master[m[33m)[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Thu Aug 28 00:35:05 2025 +0900
+
+    backend project auth accesstoken setting
+
+[33mcommit 6ae17e47f85845ffcd0f4491ee124c1c768af244[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Thu Aug 28 00:34:34 2025 +0900
+
+    backend project auth accesstoken setting
+
+[33mcommit 5d6b3c148b9aa7759ab3e4783f981f12774900bf[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Wed Aug 27 20:25:29 2025 +0900
+
+    backend project auth passwordchange logout
+
+[33mcommit 3d87474cb06aecafc7da4fa45863d3956fa67d0c[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Wed Aug 27 00:32:34 2025 +0900
+
+    backend project auth emailcheck
+
+[33mcommit 9bdebf6c256138e381d02246d46783191bfd430b[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Tue Aug 26 15:46:58 2025 +0900
+
+    backend project auth join
+
+[33mcommit ff58acc1d37a7b7cf60c94d9099bb8b780302bdc[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Mon Aug 25 16:04:24 2025 +0900
+
+    frontend project product subscribe
+
+[33mcommit 1499755a8fcf075227956f4d2fa831db1044b5dc[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Sun Aug 24 14:57:50 2025 +0900
+
+    frontend project productsPage
+
+[33mcommit 5e82d6ba221b55e99479fc5de22d1f4407d93080[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Sun Aug 24 00:07:27 2025 +0900
+
+    frontend project setting and basic
+
+[33mcommit b840ca142b28777dddef535baba1cfe7c4e47e59[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Sat Aug 23 13:14:55 2025 +0900
+
+    backend project response exception
+
+[33mcommit 70f2400b1e620cb39df01827783ea1cf51d3678c[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Fri Aug 22 17:20:03 2025 +0900
+
+    backend project contract deposit saving
+
+[33mcommit b077d67039c4afd54f87bc381b62f26be7dc8d57[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Thu Aug 21 15:37:55 2025 +0900
+
+    backend project product getAPI
+
+[33mcommit 4572b47295a9231999462de649edbc7c4ad7db90[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Thu Aug 21 13:12:33 2025 +0900
+
+    backend project openAPI info save
+
+[33mcommit 50c9f7fa79dfcc88626f292abc0cb76342f739d4[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Mon Aug 18 17:01:17 2025 +0900
+
+    backend project settings
+
+[33mcommit ae3c9f6a11b4a3eace1067fe50a7f0c14f129a15[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Mon Aug 18 17:00:14 2025 +0900
+
+    backend project settings
+
+[33mcommit 308124f9491c12dd131769ca9b98d3379cfb8338[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Sun Aug 17 22:54:26 2025 +0900
+
+    start everybank project
+
+[33mcommit aa6771eb10aa561ca985a7be0f2e1b93dc5b3328[m
+Author: onyo9 <onyo9ssafy@gmail.com>
+Date:   Mon Aug 11 16:49:53 2025 +0900
+
+    edit readme.md
+
+[33mcommit 657a560b18a0dd9efd72ca9f7334e95b748e52a3[m
+Author: iamadreamer10 <139421101+iamadreamer10@users.noreply.github.com>
+Date:   Mon Aug 11 16:48:54 2025 +0900
+
+    Initial commit
