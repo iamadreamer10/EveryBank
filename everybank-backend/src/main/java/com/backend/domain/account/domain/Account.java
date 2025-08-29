@@ -46,4 +46,6 @@ public class Account {
     @Enumerated(EnumType.STRING)
     @Column(name = "account_state", length = 20, nullable = false)
     private AccountState accountState;
+
+
 }

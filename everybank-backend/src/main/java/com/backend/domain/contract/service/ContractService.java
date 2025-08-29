@@ -18,6 +18,7 @@ import com.backend.domain.product.repository.DepositProductOptionRepository;
 import com.backend.domain.product.repository.DepositProductRepository;
 import com.backend.domain.product.repository.SavingProductOptionRepository;
 import com.backend.domain.product.repository.SavingProductRepository;
+import com.backend.global.security.SecurityUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,7 +40,7 @@ public class ContractService {
     private final SavingContractRepository savingContractRepository;
     private final AccountRepository accountRepository;
 
-    public DepositSubscriptionResponseDto subscribeDeposit(DepositSubscriptionRequestDto requestDto) {
+    public DepositSubscriptionResponseDto subscribeDeposit(DepositSubscriptionRequestDto requestDto, SecurityUser securityUser) {
         LocalDate currentDate = LocalDate.now();
 
         // 1. 검증
@@ -50,7 +51,7 @@ public class ContractService {
         LocalDate maturityDate = currentDate.plusMonths(option.getSaveTerm());
 
         // 2. 계좌 생성
-        Account account = createAccount(1L, product.getCompanyCode(), maturityDate, AccountType.DEPOSIT, requestDto.getTotalAmount());
+        Account account = createAccount(securityUser.getId(), product.getCompanyCode(), maturityDate, AccountType.DEPOSIT, requestDto.getTotalAmount());
 
         // 3. 정기예금 계약 생성
         DepositContract depositContract = DepositContract.builder()
@@ -68,7 +69,7 @@ public class ContractService {
         return DepositSubscriptionResponseDto.builder()
                 .contractId(depositContract.getContractId())
                 .userId(depositContract.getUserId())
-                .nickname("임시닉네임")
+                .nickname(securityUser.getNickname())
                 .productName(product.getProductName())
                 .productCode(product.getProductCode())
                 .totalAmount(depositContract.getPayment())
@@ -79,8 +80,9 @@ public class ContractService {
                 .build();
     }
 
-    public SavingSubscriptionResponseDto subscribeSaving(SavingSubscriptionRequestDto requestDto) {
+    public SavingSubscriptionResponseDto subscribeSaving(SavingSubscriptionRequestDto requestDto, SecurityUser securityUser) {
         LocalDate currentDate = LocalDate.now();
+        log.info(String.valueOf(requestDto));
 
         // 1. 검증
         SavingProductOption option = savingProductOptionRepository.findById(requestDto.getOptionId())
@@ -90,7 +92,7 @@ public class ContractService {
         LocalDate maturityDate = currentDate.plusMonths(option.getSaveTerm());
 
         // 2. 계좌 생성
-        Account account = createAccount(1L, product.getCompanyCode(), maturityDate, AccountType.SAVING, 0L);
+        Account account = createAccount(securityUser.getId(), product.getCompanyCode(), maturityDate, AccountType.SAVING, 0L);
 
         // 3. 적금 계약 생성
         SavingContract savingContract = SavingContract.builder()
@@ -109,7 +111,7 @@ public class ContractService {
         return SavingSubscriptionResponseDto.builder()
                 .contractId(savingContract.getContractId())
                 .userId(savingContract.getUserId())
-                .nickname("임시닉네임")
+                .nickname(securityUser.getNickname())
                 .productName(product.getProductName())
                 .productCode(product.getProductCode())
                 .companyName(product.getCompanyName())
