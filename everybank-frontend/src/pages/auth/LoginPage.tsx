@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type {LoginRequest} from "../../types/user.ts";
+import {useAuth} from "../../context/AuthContext.tsx";
 
-
-async function login(loginData: LoginRequest): Promise<any> {
+async function loginApi(loginData: LoginRequest): Promise<any> {
     const response = await fetch('http://localhost:8080/login', {
         method: 'POST',
         headers: {
@@ -20,6 +20,7 @@ async function login(loginData: LoginRequest): Promise<any> {
 
 export default function LoginPage() {
     const navigate = useNavigate();
+    const {login} = useAuth();
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -39,19 +40,28 @@ export default function LoginPage() {
         e.preventDefault();
 
         try {
-            const result = await login(formData);
-            const accessToken = result.result.access;
-            const refreshToken =result.result.refresh;
+            const result = await loginApi(formData);
+            let accessToken = result.result.access;
+            let refreshToken =result.result.refresh;
 
-            // Access Token은 메모리에 저장 (더 안전)
-            sessionStorage.setItem('accessToken', accessToken);
+            if (accessToken.startsWith('Bearer ')) {
+                accessToken = accessToken.replace('Bearer ', '');
+            }
 
+            if (refreshToken.startsWith('Bearer ')) {
+                refreshToken = refreshToken.replace('Bearer ', '');
+            }
+
+
+            login(accessToken);
             // Refresh Token은 httpOnly 쿠키가 가장 안전하지만,
             // 불가능하면 localStorage 사용
             if (refreshToken) {
                 localStorage.setItem('refreshToken', refreshToken);
-            }
 
+            }
+            alert("로그인 성공")
+            console.log('로그인 성공', result);
             // 메인 페이지로 리다이렉트
             navigate('/'); // useNavigate 훅 필요
 

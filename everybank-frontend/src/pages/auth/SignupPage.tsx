@@ -57,9 +57,14 @@ export default function SignupPage() {
 // form onSubmit 핸들러 추가
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if(emailCheckStatus != 'available'){
+            alert('이메일 인증이 완료되지 않았습니다.');
+            return;
+        }
 
         try {
             const result = await signup(formData);
+            alert("회원가입 성공")
             console.log('회원가입 성공:', result);
             navigate('/login'); // useNavigate 훅 필요
 
