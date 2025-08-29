@@ -8,3 +8,15 @@ export interface ContractOption {
 }
 
 
+export interface ContractDetail {
+    nickname: string;
+    productName: string;
+    bankName: string;
+    productType: string;
+    interestType: string;
+    interestRate: number;
+    contractDate: string;
+    maturityDate: string;
+    saveTerm: number;
+    amount: number;
+}

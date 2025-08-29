@@ -1,14 +1,17 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import {useNavigate} from "react-router-dom";
 import logo from '../../assets/image/everybank_logo.png';
 
 export default function Header() {
     const { isAuthenticated, logout } = useAuth();
+    const navigate = useNavigate();
 
     const handleLogout = () => {
         if(window.confirm('로그아웃 하시겠습니까?')){
             logout();
         }
+        navigate('/');
     };
 
     return (

@@ -1,6 +1,8 @@
 // ProductApplicationForm.tsx 수정
-import { useState } from 'react';
-import type { ProductDetail, ProductOption, SavingOption } from '../../../types/product';
+import {useState} from 'react';
+import type {ProductDetail, ProductOption, SavingOption} from '../../../types/product';
+import {useNavigate} from 'react-router-dom';
+import {useProductStore} from "../../stores/productStore.ts";
 
 export interface ProductApplicationFormProps {
     productDetail: ProductDetail;
@@ -15,30 +17,52 @@ export interface ApplicationFormData {
     optionId: number;
 }
 
-export default function ProductApplicationForm ({
-                                    productDetail,
-                                    productType,
-                                    onSubmit,
-                                    onCancel
-                                }: ProductApplicationFormProps) {
+
+export default function ProductApplicationForm({
+                                                   productDetail,
+                                                   productType,
+                                                   onCancel
+                                               }: ProductApplicationFormProps) {
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         amount: '',
         selectedOptionId: 0  // number로 초기화
     });
+    const setProductInfo = useProductStore(state => state.setProductInfo);
+    const setAmount = useProductStore(state => state.setAmount);
+    const setSelectedOption = useProductStore(state => state.setSelectedOption);
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        console.log(formData);
         if (!formData.selectedOptionId) {
             alert('옵션을 선택해주세요.');
             return;
         }
 
-        onSubmit({
+        // 선택한 옵션 객체
+        const selectedOptionObj = productDetail.option.find(
+            opt => opt.id === formData.selectedOptionId
+        );
+        if (!selectedOptionObj) return;
+
+        // Store에 저장
+        setProductInfo({
             productCode: productDetail.productCode,
-            amount: Number(formData.amount),
-            optionId: formData.selectedOptionId
+            productName: productDetail.name,
+            bankName: productDetail.bank,
+            productType: productType as 'deposits' | 'savings'
         });
+        setAmount(Number(formData.amount));
+        setSelectedOption({
+            optionId: selectedOptionObj.id,
+            interestRateTypeName: selectedOptionObj.interestRateTypeName,
+            interestRate: selectedOptionObj.interestRate,
+            saveTerm: selectedOptionObj.saveTerm
+        });
+
+        // Confirm 페이지 이동
+        navigate('/products/application-confirm');
     };
 
     return (
@@ -83,7 +107,7 @@ export default function ProductApplicationForm ({
                                 </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                {productDetail.option.map((option, index) => (
+                                {productDetail.option.map((option: SavingOption | ProductOption, index: number) => (
                                     <tr key={option.optionId || index} className="hover:bg-gray-50">
                                         <td className="px-3 py-2">
                                             <input
@@ -92,10 +116,7 @@ export default function ProductApplicationForm ({
                                                 value={option.id}
                                                 checked={formData.selectedOptionId === option.id}
                                                 onChange={(e) => {
-                                                    console.log("선택된 optionId(raw):", e.target.value);   // string
-                                                    console.log("선택된 optionId(Number):", Number(e.target.value)); // number
-                                                    console.log("option.optionId:", option.id, typeof option.id);
-
+                                                    console.log("선택된 optionId:", e.target.value);   // string
                                                     setFormData({
                                                         ...formData,
                                                         selectedOptionId: Number(e.target.value)

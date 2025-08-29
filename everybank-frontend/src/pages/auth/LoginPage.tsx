@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type {LoginRequest} from "../../types/user.ts";
 import {useAuth} from "../../context/AuthContext.tsx";
+import {useUserStore} from "../../stores/userStore.ts";
 
 async function loginApi(loginData: LoginRequest): Promise<any> {
     const response = await fetch('http://localhost:8080/login', {
@@ -25,6 +26,8 @@ export default function LoginPage() {
         email: '',
         password: ''
     });
+    const setUser = useUserStore((state) => state.setUser);
+
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,6 +65,12 @@ export default function LoginPage() {
             }
             alert("로그인 성공")
             console.log('로그인 성공', result);
+
+            setUser({
+                id: result.result.id,
+                email: result.result.email,
+                nickname: result.result.nickname
+            });
             // 메인 페이지로 리다이렉트
             navigate('/'); // useNavigate 훅 필요
 

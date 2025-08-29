@@ -1,52 +1,9 @@
-import {Link, useParams} from "react-router-dom";
-import type {Contract, ProductDetail, ProductOption, SavingOption} from "../../types/product.ts";
+import {Link, useParams, useNavigate} from "react-router-dom";
+import type { ProductDetail, ProductOption, SavingOption} from "../../types/product.ts";
 import {useEffect, useState} from "react";
 import Modal from "../../components/common/Modal.tsx";
 import ProductApplicationForm, {type ApplicationFormData} from "../../components/forms/ProductApplicationForm.tsx";
-import type {ContractOption} from "../../types/contract.ts";
-import type {ApiResponse} from "../../types/api.ts";
 
-interface ContractRequest {
-    productCode: string;
-    amount: number;
-    optionId: number;
-    // 추가 필요한 필드들
-}
-
-async function createDepositContract(contractData: ContractRequest): Promise<Contract> {
-    const response = await fetch(`http://localhost:8080/contract/deposit`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-                "productCode": contractData.productCode,
-                "totalAmount": contractData.amount,
-                "optionId": contractData.optionId
-        })
-    });
-
-    if (!response.ok) throw new Error('예금 가입 실패');
-    return response.json();
-}
-// API 함수들
-
-async function createSavingContract(contractData: ContractRequest): Promise<Contract> {
-    const response = await fetch(`http://localhost:8080/contract/saving`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-                "productCode": contractData.productCode,
-                "monthlyAmount": contractData.amount,
-                "optionId": contractData.optionId
-        })
-    });
-
-    if (!response.ok) throw new Error('적금 가입 실패');
-    return response.json();
-}
 
 async function fetchProductDetail(productCode: string, productType: string): Promise<ProductDetail> {
     const response = await fetch(`http://localhost:8080/product/${productType}/${productCode}`);
@@ -61,8 +18,7 @@ export default function ProductDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
-    const [contractInfo, setContractInfo] = useState<Contract>();
-
+    const navigate = useNavigate();
 
 
     useEffect(() => {
@@ -121,29 +77,14 @@ export default function ProductDetailPage() {
             .finally(() => setLoading(false));
     }, [productCode, productType]);  // 의존성 배열 수정
 
-// API 호출 함수
-    const handleContractSubmit = async (formData: ApplicationFormData) => {
-        try {
-            const contractData = {
-                productCode: formData.productCode,
-                amount: formData.amount,
-                optionId: formData.optionId
-            };
-
-            let result: Contract;
-            if (productType === 'deposit') {
-                result = await createDepositContract(contractData);
-            } else {
-                result = await createSavingContract(contractData);
+    const handleContractSubmit = (formData: ApplicationFormData) => {
+        navigate('/products/application-confirm', {
+            state: {
+                formData,
+                productDetail,
+                productType
             }
-
-            setShowModal(false);
-            setContractInfo(result);
-            console.log("계약 정보:", contractInfo);
-
-        } catch (error) {
-            console.error('가입 실패:', error);
-        }
+        });
     };
 
     return(
@@ -235,12 +176,8 @@ export default function ProductDetailPage() {
             >
                 <ProductApplicationForm
                     productDetail={productDetail}
-                    productType={productType}
-                    onSubmit={(formData) => {
-                        console.log('신청 데이터:', formData);
-                        handleContractSubmit(formData);
-                        setShowModal(false);
-                    }}
+                    productType={productType || 'deposit'}
+                    onSubmit={handleContractSubmit}
                     onCancel={() => setShowModal(false)}
                 />
             </Modal>
