@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.NoSuchElementException;
@@ -179,4 +180,31 @@ public class ContractService {
                 .interestRate2(option.getInterestRate2())
                 .build();
     }
+
+
+//     새로 추가되는 메서드들
+//    public MaturityCalculationDto calculateMaturity(Integer accountId, SecurityUser securityUser) {
+//        // 계좌 조회 및 검증 로직
+//        // 예금/적금 구분해서 계산 호출
+//    }
+//
+//    private MaturityCalculationDto calculateDepositMaturity(Account depositAccount, Account checkingAccount) {
+//        // 예금 계약 조회 → 이자 계산 → DTO 빌드
+//    }
+//
+//    private MaturityCalculationDto calculateSavingMaturity(Account savingAccount, Account checkingAccount) {
+//        // 적금 계약 조회 → 이자 계산 → DTO 빌드
+//    }
+//
+//    private Long calculateInterest(Long principal, BigDecimal yearlyRate, Integer months, char rateType) {
+//        // 예금 이자 계산 (단리/복리)
+//    }
+//
+//    private Long calculateSavingInterest(Long monthlyPayment, BigDecimal yearlyRate, Integer paymentCount, char rateType) {
+//        // 적금 이자 계산 (매월 납입 고려)
+//    }
+//
+//    private Account findUserCheckingAccount(Long userId) {
+//        // 사용자 입출금계좌 찾기 (AccountService에서 복사)
+//    }
 }
