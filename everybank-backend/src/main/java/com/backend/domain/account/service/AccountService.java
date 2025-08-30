@@ -6,6 +6,9 @@ import com.backend.domain.account.domain.AccountType;
 import com.backend.domain.account.dto.AccountInfoDto;
 import com.backend.domain.account.dto.CheckingAccountRequestDto;
 import com.backend.domain.account.dto.CheckingAccountResponseDto;
+import com.backend.domain.contract.domain.SavingContract;
+import com.backend.domain.contract.repository.DepositContractRepository;
+import com.backend.domain.contract.repository.SavingContractRepository;
 import com.backend.domain.transaction.dto.ExternalDepositRequestDto;
 import com.backend.domain.transaction.dto.ExternalWithdrawRequestDto;
 import com.backend.domain.account.dto.MyAccountListInfoDto;
@@ -36,6 +39,7 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final SavingContractRepository savingContractRepository;
 
     public MyAccountListInfoDto getMyAccounts(Long id) {
         Optional<List<Account>> myAccounts = accountRepository.findByUserId(id);
@@ -225,7 +229,25 @@ public class AccountService {
         accountRepository.save(checkingAccount);
         accountRepository.save(productAccount);
 
-        // 9. 거래내역 저장
+        // 9. 적금인 경우 납입 횟수 증가 및 최근 납입일 업데이트
+        if (productAccount.getAccountType() == AccountType.SAVING) {
+            SavingContract savingContract = savingContractRepository.findByAccountId(productAccount.getId())
+                    .orElseThrow(() -> new NoSuchElementException("적금 계약을 찾을 수 없습니다: " + productAccount.getId()));
+
+            // 납입 횟수 증가
+            savingContract.setCurrentPaymentCount(savingContract.getCurrentPaymentCount() + 1);
+            savingContract.setLatestPaymentDate(LocalDate.now());
+
+            savingContractRepository.save(savingContract);
+
+            log.info("적금 납입 완료 - 계약ID: {}, 납입 횟수: {}/{}회, 납입액: {}원",
+                    savingContract.getContractId(),
+                    savingContract.getCurrentPaymentCount(),
+                    savingContract.getSavingProductOption().getSaveTerm(),
+                    requestDto.getAmount());
+        }
+
+        // 10. 거래내역 저장
         Transaction transaction = Transaction.builder()
                 .transactionType(TransactionType.PAYMENT)
                 .amount(requestDto.getAmount())
