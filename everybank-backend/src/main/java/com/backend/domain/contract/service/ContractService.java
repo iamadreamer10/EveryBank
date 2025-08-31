@@ -214,7 +214,7 @@ public class ContractService {
         throw new IllegalArgumentException("지원하지 않는 계좌 타입입니다: " + productAccount.getAccountType());
     }
 
-    // 📊 2. 예금 만기정산 계산
+    // 2. 예금 만기정산 계산
     private MaturityCalculationDto calculateDepositMaturity(Account depositAccount, Account checkingAccount) {
         log.info("예금 만기정산 계산 시작 - 계좌ID: {}", depositAccount.getId());
 
@@ -263,7 +263,7 @@ public class ContractService {
                 .build();
     }
 
-    // 📊 3. 적금 만기정산 계산
+    // 3. 적금 만기정산 계산
     private MaturityCalculationDto calculateSavingMaturity(Account savingAccount, Account checkingAccount) {
         log.info("적금 만기정산 계산 시작 - 계좌ID: {}", savingAccount.getId());
 

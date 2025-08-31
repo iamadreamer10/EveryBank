@@ -15,4 +15,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     // 특정 계좌에서 출금한 거래내역
     List<Transaction> findByFromAccountIdOrderByCreatedAtDesc(Integer fromAccountId);
 
+    // 특정 계좌로 입금된 거래내역만 조회 (예금용)
+    List<Transaction> findByToAccountIdOrderByCreatedAtDesc(Integer toAccountId);
+
 }

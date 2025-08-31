@@ -34,7 +34,7 @@ public class ContractController {
         return BaseResponse.success(SuccessCode.CREATE_SUCCESS, savingContract);
     }
 
-    @PostMapping("/{accountId}/maturity")
+    @GetMapping("/{accountId}/maturity")
     public ResponseEntity<BaseResponse<MaturityCalculationDto>> calculateMaturity(
             @PathVariable Integer accountId,
             @AuthenticationPrincipal SecurityUser securityUser) {

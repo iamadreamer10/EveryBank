@@ -3,15 +3,13 @@ package com.backend.domain.account.service;
 import com.backend.domain.account.domain.Account;
 import com.backend.domain.account.domain.AccountState;
 import com.backend.domain.account.domain.AccountType;
-import com.backend.domain.account.dto.AccountInfoDto;
-import com.backend.domain.account.dto.CheckingAccountRequestDto;
-import com.backend.domain.account.dto.CheckingAccountResponseDto;
+import com.backend.domain.account.dto.*;
+import com.backend.domain.contract.domain.DepositContract;
 import com.backend.domain.contract.domain.SavingContract;
 import com.backend.domain.contract.repository.DepositContractRepository;
 import com.backend.domain.contract.repository.SavingContractRepository;
 import com.backend.domain.transaction.dto.ExternalDepositRequestDto;
 import com.backend.domain.transaction.dto.ExternalWithdrawRequestDto;
-import com.backend.domain.account.dto.MyAccountListInfoDto;
 import com.backend.domain.transaction.dto.PaymentRequestDto;
 import com.backend.domain.transaction.dto.RefundRequestDto;
 import com.backend.domain.transaction.dto.TransactionResponseDto;
@@ -40,6 +38,7 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final SavingContractRepository savingContractRepository;
+    private final DepositContractRepository depositContractRepository;
 
     public MyAccountListInfoDto getMyAccounts(Long id) {
         Optional<List<Account>> myAccounts = accountRepository.findByUserId(id);
@@ -64,6 +63,156 @@ public class AccountService {
                     .build());
         }
         return new MyAccountListInfoDto(accountInfoDtoList.size(), accountInfoDtoList);
+    }
+
+    // 가입계좌 상세조회 (계약 정보 + 거래내역)
+    public AccountDetailResponseDto getAccountDetail(Integer accountId, SecurityUser securityUser) {
+        log.info("가입계좌 상세조회 요청 - 사용자: {}, 계좌ID: {}", securityUser.getId(), accountId);
+
+        // 1. 계좌 조회 및 검증
+        Account account = accountRepository.findById(Long.valueOf(accountId))
+                .orElseThrow(() -> new NoSuchElementException("계좌를 찾을 수 없습니다: " + accountId));
+
+        // 2. 본인 계좌 검증
+        if (!account.getUserId().equals(securityUser.getId())) {
+            throw new IllegalArgumentException("본인의 계좌만 조회 가능합니다.");
+        }
+
+        // 3. 입출금계좌는 상세조회 대상이 아님
+        if (account.getAccountType() == AccountType.CHECK) {
+            throw new IllegalArgumentException("입출금계좌는 상세조회 대상이 아닙니다.");
+        }
+
+        // 4. 계좌 타입에 따른 계약 정보 조회
+        if (account.getAccountType() == AccountType.DEPOSIT) {
+            return getDepositAccountDetail(account);
+        } else if (account.getAccountType() == AccountType.SAVING) {
+            return getSavingAccountDetail(account);
+        }
+
+        throw new IllegalArgumentException("지원하지 않는 계좌 타입입니다: " + account.getAccountType());
+    }
+
+    // 📋 예금 계좌 상세조회
+    private AccountDetailResponseDto getDepositAccountDetail(Account account) {
+        log.info("예금 계좌 상세조회 - 계좌ID: {}", account.getId());
+
+        // 예금 계약 정보 조회
+        DepositContract contract = depositContractRepository.findByAccountId(account.getId())
+                .orElseThrow(() -> new NoSuchElementException("예금 계약을 찾을 수 없습니다: " + account.getId()));
+
+        // 🔥 해당 계좌의 거래내역만 조회 (입금 거래만)
+        List<Transaction> transactions = transactionRepository.findByToAccountIdOrderByCreatedAtDesc(account.getId());
+
+        // 🔥 해당 계좌 잔액 기준으로 거래내역 DTO 변환
+        List<AccountDetailResponseDto.TransactionDto> transactionDtos = buildAccountTransactionHistory(transactions, account.getId());
+
+        // 옵션 정보 DTO 변환 (예금용)
+        AccountDetailResponseDto.ProductOptionDto optionDto = AccountDetailResponseDto.ProductOptionDto.builder()
+                .interestRateType(contract.getDepositProductOption().getInterestRateType())
+                .interestRateTypeName(contract.getDepositProductOption().getInterestRateTypeName())
+                .reverseType(null) // Character이므로 null 가능
+                .reverseTypeName(null) // String이므로 null 가능
+                .saveTerm(contract.getDepositProductOption().getSaveTerm())
+                .interestRate(contract.getDepositProductOption().getInterestRate2().doubleValue())
+                .build();
+
+        return AccountDetailResponseDto.builder()
+                .accountId(account.getId())
+                .accountType(account.getAccountType())
+                .productCode(contract.getDepositProduct().getProductCode())
+                .contractDate(contract.getContractDate())
+                .maturityDate(contract.getMaturityDate())
+                .contractCondition(contract.getContractCondition())
+                .lastTransactionDate(account.getLastTransactionDate())
+                .totalAmount(contract.getPayment()) // 예금 총액
+                .monthlyPayment(null) // 예금은 월납입액 없음
+                .currentPaymentCount(null) // 예금은 납입횟수 없음
+                .option(optionDto)
+                .transactions(transactionDtos)
+                .build();
+    }
+
+    // 📋 적금 계좌 상세조회
+    private AccountDetailResponseDto getSavingAccountDetail(Account account) {
+        log.info("적금 계좌 상세조회 - 계좌ID: {}", account.getId());
+
+        // 적금 계약 정보 조회
+        SavingContract contract = savingContractRepository.findByAccountId(account.getId())
+                .orElseThrow(() -> new NoSuchElementException("적금 계약을 찾을 수 없습니다: " + account.getId()));
+
+        // 🔥 해당 계좌의 거래내역 조회 (입금/출금 모두)
+        List<Transaction> transactions = transactionRepository.findByFromAccountIdOrToAccountIdOrderByCreatedAtDesc(
+                account.getId(), account.getId());
+
+        // 🔥 해당 계좌 잔액 기준으로 거래내역 DTO 변환
+        List<AccountDetailResponseDto.TransactionDto> transactionDtos = buildAccountTransactionHistory(transactions, account.getId());
+
+        // 옵션 정보 DTO 변환 (적금용)
+        AccountDetailResponseDto.ProductOptionDto optionDto = AccountDetailResponseDto.ProductOptionDto.builder()
+                .interestRateType(contract.getSavingProductOption().getInterestRateType())
+                .interestRateTypeName(contract.getSavingProductOption().getInterestRateTypeName())
+                .reverseType(contract.getSavingProductOption().getReverseType()) // Character로 자동 boxing
+                .reverseTypeName(contract.getSavingProductOption().getReverseTypeName())
+                .saveTerm(contract.getSavingProductOption().getSaveTerm())
+                .interestRate(contract.getSavingProductOption().getInterestRate2().doubleValue())
+                .build();
+
+        return AccountDetailResponseDto.builder()
+                .accountId(account.getId())
+                .accountType(account.getAccountType())
+                .productCode(contract.getSavingProduct().getProductCode())
+                .contractDate(contract.getContractDate())
+                .maturityDate(contract.getMaturityDate())
+                .contractCondition(contract.getContractCondition())
+                .lastTransactionDate(account.getLastTransactionDate())
+                .monthlyPayment(contract.getMonthlyPayment()) // 적금 월납입액
+                .currentPaymentCount(contract.getCurrentPaymentCount()) // 적금 현재 납입횟수
+                .totalAmount(null) // 적금은 총액 없음 (월납입 × 횟수로 계산)
+                .option(optionDto)
+                .transactions(transactionDtos)
+                .build();
+    }
+
+    private List<AccountDetailResponseDto.TransactionDto> buildAccountTransactionHistory(List<Transaction> transactions, Integer targetAccountId) {
+        List<AccountDetailResponseDto.TransactionDto> result = new ArrayList<>();
+
+        // 현재 계좌 잔액부터 시작해서 역순으로 계산
+        Account targetAccount = accountRepository.findById(Long.valueOf(targetAccountId))
+                .orElseThrow(() -> new NoSuchElementException("계좌를 찾을 수 없습니다: " + targetAccountId));
+
+        Long currentBalance = targetAccount.getCurrentBalance();
+
+        // 최신순으로 정렬된 거래를 순회하면서 잔액 변화 추적
+        for (Transaction transaction : transactions) {
+            Long balanceAtTransaction;
+
+            if (targetAccountId.equals(transaction.getToAccountId())) {
+                // 입금 거래: 현재 잔액에서 거래 금액만큼 차감하면 이전 잔액
+                balanceAtTransaction = currentBalance;
+                currentBalance -= transaction.getAmount();
+            } else if (targetAccountId.equals(transaction.getFromAccountId())) {
+                // 출금 거래: 현재 잔액에서 거래 금액만큼 추가하면 이전 잔액
+                balanceAtTransaction = currentBalance;
+                currentBalance += transaction.getAmount();
+            } else {
+                continue; // 해당 계좌와 무관한 거래는 스킵
+            }
+
+            AccountDetailResponseDto.TransactionDto dto = AccountDetailResponseDto.TransactionDto.builder()
+                    .transactionId(transaction.getTransactionId())
+                    .transactionType(transaction.getTransactionType().toString())
+                    .amount(transaction.getAmount())
+                    .fromAccountId(transaction.getFromAccountId())
+                    .toAccountId(transaction.getToAccountId())
+                    .createdAt(transaction.getCreatedAt())
+                    .currentBalance(balanceAtTransaction) // 해당 계좌의 거래 후 잔액
+                    .build();
+
+            result.add(dto);
+        }
+
+        return result;
     }
 
     // 입출금계좌 등록 메서드 (사용자당 1개만 허용)
