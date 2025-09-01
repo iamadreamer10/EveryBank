@@ -1,6 +1,7 @@
 package com.backend.domain.contract.controller;
 
 import com.backend.domain.contract.dto.*;
+import com.backend.domain.contract.service.ContractDetailService;
 import com.backend.domain.contract.service.ContractService;
 import com.backend.global.common.BaseResponse;
 import com.backend.global.common.code.SuccessCode;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class ContractController {
 
     private final ContractService contractService;
+    private final ContractDetailService contractDetailService;
 
 
     @PostMapping("/deposit")
@@ -40,6 +42,19 @@ public class ContractController {
             @AuthenticationPrincipal SecurityUser securityUser) {
         MaturityCalculationDto calculation = contractService.calculateMaturity(accountId, securityUser);
         return BaseResponse.success(SuccessCode.SELECT_SUCCESS, calculation);
+    }
+
+    @GetMapping("/{accountId}")
+    public ResponseEntity<BaseResponse<ContractDetailResponseDto>> getContractDetailByAccount(
+            @PathVariable Integer accountId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @AuthenticationPrincipal SecurityUser securityUser) {
+
+        ContractDetailResponseDto contractDetail = contractDetailService.getContractDetail(
+                accountId, securityUser, page, size);
+
+        return BaseResponse.success(SuccessCode.SELECT_SUCCESS, contractDetail);
     }
 
 }

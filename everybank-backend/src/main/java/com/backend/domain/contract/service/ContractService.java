@@ -319,7 +319,7 @@ public class ContractService {
                 .build();
     }
 
-    // 🧮 4. 예금 이자 계산 (단리/복리)
+    // 4. 예금 이자 계산 (단리/복리)
     private Long calculateDepositInterest(Long principal, BigDecimal yearlyRate, Integer months, char rateType) {
         double rate = yearlyRate.doubleValue() / 100.0; // 퍼센트를 소수로 변환
         double monthlyRate = rate / 12.0; // 월 이율
@@ -339,7 +339,7 @@ public class ContractService {
         }
     }
 
-    // 🧮 5. 적금 이자 계산 (매월 납입 고려)
+    // 5. 적금 이자 계산 (매월 납입 고려)
     private Long calculateSavingInterest(Long monthlyPayment, BigDecimal yearlyRate, Integer paymentCount, char rateType) {
         double rate = yearlyRate.doubleValue() / 100.0; // 퍼센트를 소수로 변환
         double monthlyRate = rate / 12.0; // 월 이율

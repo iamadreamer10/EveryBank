@@ -1,6 +1,5 @@
 package com.backend.domain.account.controller;
 
-import com.backend.domain.account.dto.AccountDetailResponseDto;
 import com.backend.domain.account.dto.CheckingAccountRequestDto;
 import com.backend.domain.account.dto.CheckingAccountResponseDto;
 import com.backend.domain.account.dto.MyAccountListInfoDto;
@@ -28,14 +27,6 @@ public class AccountController {
         return BaseResponse.success(SuccessCode.SELECT_SUCCESS, myAccounts);
     }
 
-    // 📋 가입계좌 상세조회 API
-    @GetMapping("/{accountId}")
-    public ResponseEntity<BaseResponse<AccountDetailResponseDto>> getAccountDetail(
-            @PathVariable Integer accountId,
-            @AuthenticationPrincipal SecurityUser securityUser) {
-        AccountDetailResponseDto accountDetail = accountService.getAccountDetail(accountId, securityUser);
-        return BaseResponse.success(SuccessCode.SELECT_SUCCESS, accountDetail);
-    }
 
     // 입출금계좌 등록 API
     @PostMapping("/check/register")
