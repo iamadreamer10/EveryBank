@@ -7,8 +7,11 @@ import SignupPage from "./pages/auth/SignupPage";
 import ProductsPage from "./pages/products/ProductsPage.tsx";
 import ProductDetailPage from "./pages/products/ProductDetailPage.tsx";
 import ProductApplicationConfirmPage from "./pages/products/ProductApplicationConfirmPage.tsx";
+import MyAccountPage from "./pages/myaccount/MyAccountPage.tsx";
 import {AuthProvider} from "./context/AuthContext.tsx";
 import {QueryClientProvider, QueryClient} from "@tanstack/react-query";
+import MyAccountDetailPage from "./pages/myaccount/MyAccountDetailPage.tsx";
+
 
 export default function App() {
     const queryClient = new QueryClient();
@@ -24,6 +27,8 @@ export default function App() {
                                 <Route path="/login" element={<LoginPage/>}/>
                                 <Route path="/signup" element={<SignupPage/>}/>
                                 <Route path="/products" element={<ProductsPage/>}/>
+                                <Route path="/my_account" element={<MyAccountPage/>}/>
+                                <Route path="/my_account/:accountId" element={<MyAccountDetailPage/>}/>
                                 <Route path="/products/:productType/:productCode" element={<ProductDetailPage/>}/>
                                 <Route path="/products/application-confirm" element={<ProductApplicationConfirmPage/>}/>
                             </Routes>

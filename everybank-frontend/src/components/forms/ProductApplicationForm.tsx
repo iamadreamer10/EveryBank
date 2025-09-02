@@ -1,4 +1,3 @@
-// ProductApplicationForm.tsx 수정
 import {useState} from 'react';
 import type {ProductDetail, ProductOption, SavingOption} from '../../../types/product';
 import {useNavigate} from 'react-router-dom';

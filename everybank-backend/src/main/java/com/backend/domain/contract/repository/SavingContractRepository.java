@@ -6,10 +6,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface SavingContractRepository extends JpaRepository<SavingContract, Long> {
     Optional<SavingContract> findByAccountId(Integer accountId);
+
+    @Query("SELECT sc FROM SavingContract sc " +
+            "JOIN FETCH sc.savingProduct " +
+            "WHERE sc.accountId IN :accountIds")
+    List<SavingContract> findByAccountIdIn(@Param("accountIds") List<Integer> accountIds);
 
 }

@@ -53,7 +53,7 @@ public class ContractService {
         LocalDate maturityDate = currentDate.plusMonths(option.getSaveTerm());
 
         // 2. 계좌 생성
-        Account account = createAccount(securityUser.getId(), product.getCompanyCode(), maturityDate, AccountType.DEPOSIT, requestDto.getTotalAmount());
+        Account account = createAccount(securityUser.getId(), product.getCompanyCode(), maturityDate, AccountType.DEPOSIT, 0L);
 
         // 3. 정기예금 계약 생성
         DepositContract depositContract = DepositContract.builder()

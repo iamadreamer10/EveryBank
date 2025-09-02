@@ -1,5 +1,3 @@
-import type {ContractOption} from "./contract.ts";
-
 export interface Product {
     productCode: string;
     bank: string;

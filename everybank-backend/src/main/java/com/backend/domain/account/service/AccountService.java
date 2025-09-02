@@ -4,7 +4,11 @@ import com.backend.domain.account.domain.Account;
 import com.backend.domain.account.domain.AccountState;
 import com.backend.domain.account.domain.AccountType;
 import com.backend.domain.account.dto.*;
+import com.backend.domain.company.domain.FinCompany;
+import com.backend.domain.company.repository.FinCompanyRepository;
+import com.backend.domain.contract.domain.DepositContract;
 import com.backend.domain.contract.domain.SavingContract;
+import com.backend.domain.contract.repository.DepositContractRepository;
 import com.backend.domain.contract.repository.SavingContractRepository;
 import com.backend.domain.transaction.dto.ExternalDepositRequestDto;
 import com.backend.domain.transaction.dto.ExternalWithdrawRequestDto;
@@ -23,10 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -34,32 +37,152 @@ import java.util.Optional;
 public class AccountService {
 
     private final AccountRepository accountRepository;
-    private final TransactionRepository transactionRepository;
+    private final FinCompanyRepository finCompanyRepository;
+    private final DepositContractRepository depositContractRepository;
     private final SavingContractRepository savingContractRepository;
+    private final TransactionRepository transactionRepository;
 
-    public MyAccountListInfoDto getMyAccounts(Long id) {
-        Optional<List<Account>> myAccounts = accountRepository.findByUserId(id);
+    public MyAccountListInfoDto getMyAccounts(Long userId) {
+        // 1. 사용자의 모든 계좌 조회
+        List<Account> accounts = accountRepository.findByUserId(userId)
+                .orElse(List.of());
 
-        if (myAccounts.isEmpty()) {
+        if (accounts.isEmpty()) {
             return MyAccountListInfoDto.builder()
                     .count(0)
+                    .accountList(List.of())
                     .build();
         }
 
-        List<AccountInfoDto> accountInfoDtoList = new ArrayList<>();
-        for (Account account : myAccounts.get()) {
-            accountInfoDtoList.add(AccountInfoDto.builder()
-                    .id(account.getId())
-                    .userId(account.getUserId())
-                    .accountType(account.getAccountType())
-                    .currentBalance(account.getCurrentBalance())
-                    .lastTransactionDate(account.getLastTransactionDate())
-                    .companyCode(account.getCompanyCode())
-                    .maturityDate(account.getMaturityDate())
-                    .accountState(account.getAccountState())
-                    .build());
+        // 2. 필요한 데이터 배치 조회
+        Map<String, String> bankNames = loadBankNames(accounts);
+        Map<Integer, ContractInfo> contractInfos = loadContractInfos(accounts);
+
+        // 3. DTO 변환
+        List<AccountInfoDto> accountInfoList = accounts.stream()
+                .map(account -> buildAccountInfoDto(account, bankNames, contractInfos))
+                .collect(Collectors.toList());
+
+        return MyAccountListInfoDto.builder()
+                .count(accountInfoList.size())
+                .accountList(accountInfoList)
+                .build();
+    }
+
+    // 은행명 배치 조회
+    private Map<String, String> loadBankNames(List<Account> accounts) {
+        Set<String> companyCodes = accounts.stream()
+                .map(Account::getCompanyCode)
+                .collect(Collectors.toSet());
+
+        return finCompanyRepository.findByCompanyCodeIn(companyCodes)
+                .stream()
+                .collect(Collectors.toMap(
+                        FinCompany::getCompanyCode,
+                        FinCompany::getCompanyName
+                ));
+    }
+
+    // 계약 정보 배치 조회
+    private Map<Integer, ContractInfo> loadContractInfos(List<Account> accounts) {
+        Map<Integer, ContractInfo> result = new HashMap<>();
+
+        // 예금 계좌들의 계약 정보
+        List<Integer> depositAccountIds = accounts.stream()
+                .filter(account -> account.getAccountType() == AccountType.DEPOSIT)
+                .map(Account::getId)
+                .collect(Collectors.toList());
+
+        if (!depositAccountIds.isEmpty()) {
+            List<DepositContract> depositContracts =
+                    depositContractRepository.findByAccountIdIn(depositAccountIds);
+
+            depositContracts.forEach(contract -> {
+                result.put(contract.getAccountId(), ContractInfo.builder()
+                        .productName(contract.getDepositProduct().getProductName())
+                        .contractDate(contract.getContractDate())
+                        .endDate(contract.getMaturityDate())
+                        .build());
+            });
         }
-        return new MyAccountListInfoDto(accountInfoDtoList.size(), accountInfoDtoList);
+
+        // 적금 계좌들의 계약 정보
+        List<Integer> savingAccountIds = accounts.stream()
+                .filter(account -> account.getAccountType() == AccountType.SAVING)
+                .map(Account::getId)
+                .collect(Collectors.toList());
+
+        if (!savingAccountIds.isEmpty()) {
+            List<SavingContract> savingContracts =
+                    savingContractRepository.findByAccountIdIn(savingAccountIds);
+
+            savingContracts.forEach(contract -> {
+                result.put(contract.getAccountId(), ContractInfo.builder()
+                        .productName(contract.getSavingProduct().getProductName())
+                        .contractDate(contract.getContractDate())
+                        .endDate(contract.getMaturityDate())
+                        .build());
+            });
+        }
+
+        return result;
+    }
+
+    // DTO 빌드
+    private AccountInfoDto buildAccountInfoDto(Account account,
+                                               Map<String, String> bankNames,
+                                               Map<Integer, ContractInfo> contractInfos) {
+
+        String bankName = bankNames.getOrDefault(account.getCompanyCode(), "알 수 없음");
+
+        String productName;
+        String startDate;
+        String endDate;
+
+        if (account.getAccountType() == AccountType.CHECK) {
+            // 입출금계좌는 Contract가 없음
+            productName = "입출금계좌";
+            startDate = account.getLastTransactionDate() != null ?
+                    account.getLastTransactionDate().toLocalDate()
+                            .format(DateTimeFormatter.ofPattern("yyyy.MM.dd")) : "";
+            endDate = "2099.12.31";
+        } else {
+            // 예금/적금은 Contract에서 정보 가져오기
+            ContractInfo contractInfo = contractInfos.get(account.getId());
+            if (contractInfo != null) {
+                productName = contractInfo.getProductName();
+                startDate = contractInfo.getContractDate()
+                        .format(DateTimeFormatter.ofPattern("yyyy.MM.dd"));
+                endDate = contractInfo.getEndDate()
+                        .format(DateTimeFormatter.ofPattern("yyyy.MM.dd"));
+            } else {
+                productName = "상품정보 없음";
+                startDate = "";
+                endDate = "";
+
+            }
+        }
+
+        return AccountInfoDto.builder()
+                .accountId(account.getId())
+                .accountName(generateAccountName(account)) // 임시로 생성
+                .balance(account.getCurrentBalance())
+                .bank(bankName)
+                .productName(productName)
+                .accountType(account.getAccountType().toString())
+                .startDate(startDate)
+                .endDate(endDate)
+                .status(account.getAccountState().toString().toLowerCase())
+                .build();
+    }
+
+    // 임시 계좌명 생성 (나중에 DB 컬럼 추가 또는 사용자 설정 기능)
+    private String generateAccountName(Account account) {
+        return switch (account.getAccountType()) {
+            case CHECK -> "내 입출금계좌";
+            case DEPOSIT -> "내 예금계좌";
+            case SAVING -> "내 적금계좌";
+        };
     }
 
 
