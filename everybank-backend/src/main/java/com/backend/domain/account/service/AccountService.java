@@ -44,7 +44,7 @@ public class AccountService {
 
     public MyAccountListInfoDto getMyAccounts(Long userId) {
         // 1. 사용자의 모든 계좌 조회
-        List<Account> accounts = accountRepository.findByUserId(userId)
+        List<Account> accounts = accountRepository.findActiveAccounts(userId)
                 .orElse(List.of());
 
         if (accounts.isEmpty()) {

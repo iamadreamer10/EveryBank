@@ -9,4 +9,5 @@ import java.util.Set;
 public interface FinCompanyRepository extends JpaRepository<FinCompany, Long> {
     List<FinCompany> findByCompanyCodeIn(Set<String> companyCodes);
 
+    FinCompany findFinCompanyByCompanyCode(String companyCode);
 }

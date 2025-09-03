@@ -65,3 +65,15 @@ export interface Transaction {
     balance: number;
     paymentNumber: number;
 }
+
+export interface AccountTransactionModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    accountId: number;
+    accountName: string;
+    bank: string;
+    currentBalance: number;
+    isMatured: boolean;
+    transactionType: 'deposit' | 'withdraw' | 'payment' | 'refund';
+    onSuccess: () => void;
+}

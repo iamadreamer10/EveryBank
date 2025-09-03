@@ -11,7 +11,7 @@ import MyAccountPage from "./pages/myaccount/MyAccountPage.tsx";
 import {AuthProvider} from "./context/AuthContext.tsx";
 import {QueryClientProvider, QueryClient} from "@tanstack/react-query";
 import MyAccountDetailPage from "./pages/myaccount/MyAccountDetailPage.tsx";
-
+import RefundConfirmationPage from "./pages/contract/RefundConfirmationPage.tsx";
 
 export default function App() {
     const queryClient = new QueryClient();
@@ -31,6 +31,7 @@ export default function App() {
                                 <Route path="/my_account/:accountId" element={<MyAccountDetailPage/>}/>
                                 <Route path="/products/:productType/:productCode" element={<ProductDetailPage/>}/>
                                 <Route path="/products/application-confirm" element={<ProductApplicationConfirmPage/>}/>
+                                <Route path="/contract/maturity/:accountId" element={<RefundConfirmationPage/>}/>
                             </Routes>
                         </main>
                         <Footer/>

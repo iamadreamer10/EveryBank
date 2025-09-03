@@ -1,12 +1,67 @@
-import {Link, useParams} from "react-router-dom";
-import {useEffect, useState} from "react";
-import type {AccountDetail, Transaction} from "../../types/account.ts";
+import { Link, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+
+// API 응답 타입 정의
+interface ContractInfo {
+    contractId: number | null;
+    productCode: string;
+    productName: string;
+    bank: string;
+    contractType: string;
+    interestRate: number;
+    interestRateType: string;
+    monthlyPayment: number | null;
+    totalAmount: number | null;
+    term: number | null;
+    startDate: string;
+    endDate: string;
+    contractStatus: string;
+}
+
+interface AccountInfo {
+    accountId: number;
+    accountNumber: string;
+    currentBalance: number;
+    paymentCount: number | null;
+    lastTransactionDate: string;
+}
+
+interface ExpectedAmounts {
+    totalPayment: number;
+    expectedInterest: number;
+    maturityAmount: number;
+}
+
+interface Transaction {
+    id: number;
+    date: string;
+    description: string;
+    amount: number;
+    balance: number;
+}
+
+interface Pagination {
+    currentPage: number;
+    totalPages: number;
+    totalCount: number;
+    hasNext: boolean;
+}
+
+interface ContractDetailResponse {
+    status: number;
+    message: string;
+    result: {
+        contractInfo: ContractInfo;
+        accountInfo: AccountInfo;
+        expectedAmounts: ExpectedAmounts;
+        transactions: Transaction[];
+        pagination: Pagination;
+    };
+}
 
 export default function MyAccountDetailPage() {
-
     const { accountId } = useParams<{ accountId: string }>();
-    const [accountDetail, setAccountDetail] = useState<AccountDetail | null>(null);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [contractData, setContractData] = useState<ContractDetailResponse['result'] | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +76,7 @@ export default function MyAccountDetailPage() {
             const token = sessionStorage.getItem('accessToken');
 
             // 계좌 상세 정보 조회
-            const response = await fetch(`http://localhost:8080/my_account/${id}`, {
+            const response = await fetch(`http://localhost:8080/contract/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -30,43 +85,11 @@ export default function MyAccountDetailPage() {
 
             if (!response.ok) throw new Error('계좌 상세 조회 실패');
 
-            // 임시 mock 데이터
-            const mockDetail: AccountDetail = {
-                id: Number(id),
-                accountName: '영플러스적금',
-                bank: '아이엠뱅크',
-                accountType: 'SAVING',
-                interestRate: 3.25,
-                monthlyPayment: 500000,
-                paymentCount: 8,
-                startDate: '2025.01.11',
-                endDate: '2027.01.11',
-                currentBalance: 4000000,
-                expectedInterest: 552618,
-                expectedMaturityAmount: 12552618
-            };
+            const data: ContractDetailResponse = await response.json();
+            console.log("응답 데이터:", data);
 
-            const mockTransactions: Transaction[] = [
-                {
-                    id: 1,
-                    date: '2025.08.14-18:24:33',
-                    description: '8회차 | 25년 08월분',
-                    amount: 500000,
-                    balance: 4000000,
-                    paymentNumber: 8
-                },
-                {
-                    id: 2,
-                    date: '2025.07.11-10:55:11',
-                    description: '7회차 | 25년 07월분',
-                    amount: 500000,
-                    balance: 3500000,
-                    paymentNumber: 7
-                }
-            ];
-
-            setAccountDetail(mockDetail);
-            setTransactions(mockTransactions);
+            setContractData(data.result);
+            setError(null);
 
         } catch (error) {
             console.error('계좌 상세 조회 실패:', error);
@@ -88,13 +111,73 @@ export default function MyAccountDetailPage() {
         console.log('입금하기');
     };
 
+    // 날짜 포맷팅
+    const formatDate = (dateString: string): string => {
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR');
+        } catch (error) {
+            return dateString;
+        }
+    };
+
+    // 계약 상태 한글 변환
+    const getContractStatusText = (status: string): string => {
+        switch (status) {
+            case 'ACTIVE':
+                return '정상';
+            case 'CLOSED':
+                return '해지';
+            case 'MATURED':
+                return '만기';
+            default:
+                return status;
+        }
+    };
+
+    // 계약 타입별 표시명
+    const getContractTypeText = (type: string): string => {
+        switch (type) {
+            case 'CHECKING':
+                return '입출금계좌';
+            case 'DEPOSIT':
+                return '정기예금';
+            case 'SAVING':
+                return '적금';
+            default:
+                return type;
+        }
+    };
+
     if (loading) {
-        return <div className="max-w-7xl mx-auto px-4 py-12">로딩 중...</div>;
+        return (
+            <div className="max-w-7xl mx-auto px-4 py-12">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-bank-primary mx-auto mb-4"></div>
+                    <p className="text-gray-600">계좌 정보를 불러오고 있습니다...</p>
+                </div>
+            </div>
+        );
     }
 
-    if (error || !accountDetail) {
-        return <div className="max-w-7xl mx-auto px-4 py-12 text-red-500">에러: {error}</div>;
+    if (error || !contractData) {
+        return (
+            <div className="max-w-7xl mx-auto px-4 py-12">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                    <div className="text-red-600 mb-2">⚠️ 오류가 발생했습니다</div>
+                    <p className="text-red-800">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                    >
+                        다시 시도
+                    </button>
+                </div>
+            </div>
+        );
     }
+
+    const { contractInfo, accountInfo, expectedAmounts, transactions } = contractData;
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -108,75 +191,149 @@ export default function MyAccountDetailPage() {
                 </Link>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">상품안내</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">계좌 상세정보</h1>
 
             {/* 계좌 상세 정보 카드 */}
             <div className="bg-white rounded-lg border border-gray-200 p-8 mb-8">
                 <div className="flex justify-between items-start mb-6">
-                    <h2 className="text-2xl font-bold text-bank-primary">{accountDetail.accountName}</h2>
-                    <h3 className="text-xl font-semibold text-gray-700">{accountDetail.bank}</h3>
+                    <div>
+                        <h2 className="text-2xl font-bold text-bank-primary mb-2">
+                            {contractInfo.productName}
+                        </h2>
+                        <div className="flex items-center gap-3">
+                            <span className="text-lg font-semibold text-gray-700">
+                                {contractInfo.bank}
+                            </span>
+                            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                                {getContractTypeText(contractInfo.contractType)}
+                            </span>
+                            <span className={`px-3 py-1 rounded-full text-sm ${
+                                contractInfo.contractStatus === 'ACTIVE'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-100 text-gray-800'
+                            }`}>
+                                {getContractStatusText(contractInfo.contractStatus)}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm text-gray-600 mb-1">계좌번호</p>
+                        <p className="text-lg font-mono font-bold text-gray-900">
+                            {accountInfo.accountNumber}
+                        </p>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div className="space-y-3">
-                        <div className="flex justify-between">
-                            <span className="text-gray-600">가입조건</span>
-                            <span className="font-medium">단리 / {accountDetail.interestRate}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-600">월납입액</span>
-                            <span className="font-medium">{accountDetail.monthlyPayment.toLocaleString()}원</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-600">진행회차</span>
-                            <span className="font-medium">{accountDetail.paymentCount}회</span>
-                        </div>
+                        {contractInfo.interestRate > 0 && (
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">금리</span>
+                                <span className="font-medium">
+                                    {contractInfo.interestRateType} / {contractInfo.interestRate}%
+                                </span>
+                            </div>
+                        )}
+
+                        {contractInfo.monthlyPayment && (
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">월납입액</span>
+                                <span className="font-medium">
+                                    {contractInfo.monthlyPayment.toLocaleString()}원
+                                </span>
+                            </div>
+                        )}
+
+                        {contractInfo.totalAmount !== null && (
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">가입금액</span>
+                                <span className="font-medium">
+                                    {contractInfo.totalAmount.toLocaleString()}원
+                                </span>
+                            </div>
+                        )}
+
+                        {accountInfo.paymentCount !== null && (
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">진행회차</span>
+                                <span className="font-medium">{accountInfo.paymentCount}회</span>
+                            </div>
+                        )}
+
+                        {contractInfo.term && (
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">계약기간</span>
+                                <span className="font-medium">{contractInfo.term}개월</span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-3">
                         <div className="flex justify-between">
                             <span className="text-gray-600">가입일</span>
-                            <span className="font-medium">{accountDetail.startDate}</span>
+                            <span className="font-medium">{formatDate(contractInfo.startDate)}</span>
                         </div>
+
+                        {contractInfo.contractType !== 'CHECKING' && (
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">만기일</span>
+                                <span className="font-medium">{formatDate(contractInfo.endDate)}</span>
+                            </div>
+                        )}
+
                         <div className="flex justify-between">
-                            <span className="text-gray-600">만기일</span>
-                            <span className="font-medium">{accountDetail.endDate}</span>
+                            <span className="text-gray-600">최종거래일</span>
+                            <span className="font-medium">
+                                {formatDate(accountInfo.lastTransactionDate)}
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                <div className="text-right">
-                    <p className="text-3xl font-bold text-bank-primary">
-                        {accountDetail.currentBalance.toLocaleString()}원
+                <div className="text-center border-t pt-6">
+                    <p className="text-sm text-gray-600 mb-2">현재 잔액</p>
+                    <p className="text-4xl font-bold text-bank-primary">
+                        {accountInfo.currentBalance.toLocaleString()}원
                     </p>
                 </div>
             </div>
 
-            {/* 예상 수익 정보 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold mb-4">예상수익</h3>
-                    <p className="text-2xl font-bold text-bank-primary">
-                        {accountDetail.expectedInterest.toLocaleString()}원
-                    </p>
-                </div>
+            {/* 예상 수익 정보 (예금/적금인 경우에만) */}
+            {contractInfo.contractType !== 'CHECKING' && expectedAmounts.maturityAmount > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+                        <h3 className="text-sm text-gray-600 mb-2">총 납입예정액</h3>
+                        <p className="text-xl font-bold text-gray-900">
+                            {expectedAmounts.totalPayment.toLocaleString()}원
+                        </p>
+                    </div>
 
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold mb-4">만기예상액</h3>
-                    <p className="text-2xl font-bold text-bank-primary">
-                        {accountDetail.expectedMaturityAmount.toLocaleString()}원
-                    </p>
+                    <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+                        <h3 className="text-sm text-gray-600 mb-2">예상 수익</h3>
+                        <p className="text-xl font-bold text-bank-success">
+                            {expectedAmounts.expectedInterest.toLocaleString()}원
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+                        <h3 className="text-sm text-gray-600 mb-2">만기 예상액</h3>
+                        <p className="text-xl font-bold text-bank-primary">
+                            {expectedAmounts.maturityAmount.toLocaleString()}원
+                        </p>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* 액션 버튼 */}
             <div className="flex justify-center gap-4 mb-8">
-                <button
-                    onClick={handleTerminate}
-                    className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 font-medium"
-                >
-                    해지하기
-                </button>
+                {contractInfo.contractType !== 'CHECKING' && (
+                    <button
+                        onClick={handleTerminate}
+                        className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 font-medium"
+                    >
+                        해지하기
+                    </button>
+                )}
                 <button
                     onClick={handleDeposit}
                     className="px-8 py-3 bg-bank-success text-white rounded-md hover:bg-bank-dark font-medium"
@@ -197,15 +354,17 @@ export default function MyAccountDetailPage() {
                             <div className="flex justify-between items-center">
                                 <div>
                                     <p className="text-sm text-bank-primary font-medium mb-1">
-                                        {transaction.date}
+                                        {formatDate(transaction.date)}
                                     </p>
                                     <p className="font-medium text-gray-900">
                                         {transaction.description}
                                     </p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xl font-bold text-bank-primary mb-1">
-                                        +{transaction.amount.toLocaleString()}원
+                                    <p className={`text-xl font-bold mb-1 ${
+                                        transaction.amount > 0 ? 'text-bank-success' : 'text-red-500'
+                                    }`}>
+                                        {transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()}원
                                     </p>
                                     <p className="text-sm text-gray-600">
                                         잔액 {transaction.balance.toLocaleString()}원
@@ -222,14 +381,20 @@ export default function MyAccountDetailPage() {
                     </div>
                 )}
 
-                {transactions.length > 0 && (
+                {transactions.length > 0 && contractData.pagination.hasNext && (
                     <div className="p-4 text-center border-t">
-                        <button className="text-bank-primary hover:text-bank-dark font-medium">
-                            더보기
+                        <button
+                            className="text-bank-primary hover:text-bank-dark font-medium"
+                            onClick={() => {
+                                // TODO: 더 많은 거래내역 로드
+                                console.log('더 많은 거래내역 로드');
+                            }}
+                        >
+                            더보기 ({contractData.pagination.totalCount - transactions.length}개 더 있음)
                         </button>
                     </div>
                 )}
             </div>
         </div>
     );
-};
+}

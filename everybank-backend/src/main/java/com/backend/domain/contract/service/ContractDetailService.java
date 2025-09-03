@@ -3,6 +3,7 @@ package com.backend.domain.contract.service;
 import com.backend.domain.account.domain.Account;
 import com.backend.domain.account.domain.AccountType;
 import com.backend.domain.account.repository.AccountRepository;
+import com.backend.domain.company.repository.FinCompanyRepository;
 import com.backend.domain.contract.domain.DepositContract;
 import com.backend.domain.contract.domain.SavingContract;
 import com.backend.domain.contract.dto.ContractDetailResponseDto;
@@ -35,12 +36,13 @@ public class ContractDetailService {
     private final DepositContractRepository depositContractRepository;
     private final SavingContractRepository savingContractRepository;
     private final TransactionRepository transactionRepository;
+    private final FinCompanyRepository finCompanyRepository;
 
     public ContractDetailResponseDto getContractDetail(Integer accountId, SecurityUser securityUser,
                                                        Integer page, Integer size) {
         log.info("계약 상세조회 - 사용자: {}, 계좌ID: {}", securityUser.getId(), accountId);
 
-        // 1단계: 계좌 조회 (1개 쿼리)
+// 1단계: 계좌 조회 (1개 쿼리)
         Account account = accountRepository.findById(Long.valueOf(accountId))
                 .orElseThrow(() -> new NoSuchElementException("계좌를 찾을 수 없습니다: " + accountId));
 
@@ -49,7 +51,9 @@ public class ContractDetailService {
         }
 
         // 2단계: 계좌 타입별 처리
-        if (account.getAccountType() == AccountType.DEPOSIT) {
+        if (account.getAccountType() == AccountType.CHECK) {
+            return buildCheckingAccountDetail(account, page, size);
+        } else if (account.getAccountType() == AccountType.DEPOSIT) {
             return buildDepositContractDetail(account, page, size);
         } else if (account.getAccountType() == AccountType.SAVING) {
             return buildSavingContractDetail(account, page, size);
@@ -57,6 +61,108 @@ public class ContractDetailService {
 
         throw new IllegalArgumentException("지원하지 않는 계좌 타입: " + account.getAccountType());
     }
+
+    // 🏦 입출금계좌 상세조회 (새로 추가)
+    private ContractDetailResponseDto buildCheckingAccountDetail(Account account, Integer page, Integer size) {
+        log.info("입출금계좌 상세조회 - 계좌ID: {}", account.getId());
+
+        // 1. 거래내역 조회 (입출금계좌는 from/to 양방향으로 조회)
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by("createdAt").descending());
+        Page<Transaction> transactionPage = transactionRepository.findCheckingAccountTransactions(
+                account.getId(), pageable);
+
+        // 2. 입출금계좌용 예상금액 (잔액만 표시)
+        ContractDetailResponseDto.ExpectedAmountsDto expectedAmounts =
+                ContractDetailResponseDto.ExpectedAmountsDto.builder()
+                        .totalPayment(account.getCurrentBalance())
+                        .expectedInterest(0L)  // 입출금계좌는 이자 없음
+                        .maturityAmount(account.getCurrentBalance())
+                        .build();
+
+        // 3. DTO 조합
+        return ContractDetailResponseDto.builder()
+                .contractInfo(buildCheckingAccountContractInfo(account))
+                .accountInfo(buildAccountInfo(account, null))
+                .expectedAmounts(expectedAmounts)
+                .transactions(buildCheckingTransactionDetails(transactionPage.getContent(), account.getId()))
+                .pagination(buildPagination(transactionPage))
+                .build();
+    }
+
+    // 🏗️ 입출금계좌 계약 정보 DTO 빌더
+    private ContractDetailResponseDto.ContractInfoDto buildCheckingAccountContractInfo(Account account) {
+        return ContractDetailResponseDto.ContractInfoDto.builder()
+                .contractId(null)  // 입출금계좌는 계약 ID 없음
+                .productCode("CHECKING_ACCOUNT")  // 고정값
+                .productName("입출금계좌")
+                .bank(getCompanyNameByCode(account.getCompanyCode()))
+                .contractType("CHECKING")
+                .interestRate(0.0)  // 입출금계좌는 이자율 없음
+                .interestRateType("없음")
+                .monthlyPayment(null)
+                .totalAmount(null)
+                .term(null)  // 입출금계좌는 기간 없음
+                .startDate(account.getLastTransactionDate().toLocalDate())  // 계좌 개설일
+                .endDate(account.getMaturityDate())  // 사실상 만료 없음 (99년 후)
+                .contractStatus(account.getAccountState().toString())
+                .build();
+    }
+
+    // 🔄 입출금계좌 거래내역 DTO 변환 (입금/출금 구분)
+    private List<ContractDetailResponseDto.TransactionDetailDto> buildCheckingTransactionDetails(
+            List<Transaction> transactions, Integer accountId) {
+        List<ContractDetailResponseDto.TransactionDetailDto> result = new ArrayList<>();
+
+        for (int i = 0; i < transactions.size(); i++) {
+            Transaction tx = transactions.get(i);
+
+            String description = getCheckingTransactionDescription(tx, accountId);
+            String memo = formatCheckingTransactionMemo(tx, i + 1);
+
+            ContractDetailResponseDto.TransactionDetailDto dto =
+                    ContractDetailResponseDto.TransactionDetailDto.builder()
+                            .transactionId(tx.getTransactionId())
+                            .transactionDate(tx.getCreatedAt())
+                            .transactionType(tx.getTransactionType().toString())
+                            .amount(tx.getAmount())
+                            .balance(tx.getCurrentBalance())  // 거래 후 잔액
+                            .description(description)
+                            .paymentNumber(null)  // 입출금계좌는 납입 회차 없음
+                            .memo(memo)
+                            .build();
+
+            result.add(dto);
+        }
+
+        return result;
+    }
+
+    // 입출금계좌 거래 설명 생성
+    private String getCheckingTransactionDescription(Transaction tx, Integer accountId) {
+        if (tx.getFromAccountId() == null && tx.getToAccountId().equals(accountId)) {
+            return "외부입금";  // 외부 → 입출금계좌
+        } else if (tx.getFromAccountId() != null && tx.getFromAccountId().equals(accountId)
+                && tx.getToAccountId() == null) {
+            return "외부출금";  // 입출금계좌 → 외부
+        } else if (tx.getFromAccountId() != null && tx.getFromAccountId().equals(accountId)) {
+            return "상품납입";  // 입출금계좌 → 상품계좌
+        } else if (tx.getToAccountId() != null && tx.getToAccountId().equals(accountId)) {
+            return "상품환급";  // 상품계좌 → 입출금계좌
+        }
+        return "기타거래";
+    }
+
+    // 입출금계좌 거래 메모 생성
+    private String formatCheckingTransactionMemo(Transaction tx, Integer sequenceNumber) {
+        return String.format("거래 %d | %s", sequenceNumber,
+                tx.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm")));
+    }
+
+    // 회사명 조회 헬퍼 메서드
+    private String getCompanyNameByCode(String companyCode) {
+        return finCompanyRepository.findFinCompanyByCompanyCode(companyCode).getCompanyName();
+    }
+
 
     // 예금 계약 상세조회
     private ContractDetailResponseDto buildDepositContractDetail(Account account, Integer page, Integer size) {

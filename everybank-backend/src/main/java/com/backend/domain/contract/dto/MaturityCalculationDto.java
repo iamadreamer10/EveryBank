@@ -30,8 +30,8 @@ public class MaturityCalculationDto {
     private Integer currentPaymentCount; // 현재 납입 횟수
 
     // 만기정산 계산 결과
-    private Long principal;            // 원금 총액
-    private Long interest;             // 이자 총액
+    private Long totalPrincipal;            // 원금 총액
+    private Long totalInterest;             // 이자 총액
     private Long totalPayout;          // 총 지급액 (원금+이자)
 
     // 현재 상태
