@@ -4,7 +4,6 @@ import AccountModal from "../../components/account/AccountModal.tsx";
 import type { Account } from "../../types/account.ts";
 import { useQueryClient } from '@tanstack/react-query';
 import {useUserStore} from "../../stores/userStore.ts";
-import {useContractStore} from "../../stores/contractStore.ts";
 
 // API 응답 타입 정의
 interface ApiResponse {

@@ -43,7 +43,7 @@ export default function AccountItem({ account, sectionType, onAccountUpdated }: 
     // 계좌 타입별 색상과 버튼
     const typeConfig = {
         CHECK: { color: 'bg-blue-100 text-blue-800', label: '입출금', buttons: ['deposit', 'withdraw'] },
-        DEPOSIT: { color: 'bg-green-100 text-green-800', label: '예금', buttons: ['payment', 'refund'] },
+        DEPOSIT: { color: 'bg-green-100 text-green-800', label: '예금', buttons: ['refund'] },
         SAVING: { color: 'bg-purple-100 text-purple-800', label: '적금', buttons: ['payment', 'refund'] }
     };
 
@@ -92,6 +92,16 @@ export default function AccountItem({ account, sectionType, onAccountUpdated }: 
                                 </div>
                             )}
                         </div>
+
+                        {/* 적금인 경우 월납입액 표시 */}
+                        {sectionType === 'SAVING' && account.monthlyPayment && (
+                            <div className="mt-3 text-sm">
+                                <span className="text-gray-600">월납입액:</span>
+                                <span className="ml-2 font-medium text-purple-600">
+                                    {account.monthlyPayment.toLocaleString()}원
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col gap-2 ml-4">
@@ -116,7 +126,8 @@ export default function AccountItem({ account, sectionType, onAccountUpdated }: 
                             >
                                 {buttonType === 'deposit' ? '입금' :
                                     buttonType === 'withdraw' ? '출금' :
-                                        buttonType === 'payment' ? '납입' :
+                                        buttonType === 'payment' ?
+                                            `납입${account.monthlyPayment ? ` (${account.monthlyPayment.toLocaleString()}원)` : ''}` :
                                             matured ? '환급' : '중도해지' }
                             </button>
                         ))}
@@ -135,6 +146,7 @@ export default function AccountItem({ account, sectionType, onAccountUpdated }: 
                     transactionType={modalState.transactionType}
                     endDate={account.endDate}
                     isMatured={matured}
+                    monthlyPayment={account.monthlyPayment} // 추가
                     onSuccess={() => {
                         onAccountUpdated?.();
                     }}

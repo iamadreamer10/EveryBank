@@ -18,10 +18,14 @@ import com.backend.domain.product.repository.DepositProductOptionRepository;
 import com.backend.domain.product.repository.DepositProductRepository;
 import com.backend.domain.product.repository.SavingProductOptionRepository;
 import com.backend.domain.product.repository.SavingProductRepository;
+import com.backend.domain.transaction.domain.Transaction;
+import com.backend.domain.transaction.domain.TransactionType;
+import com.backend.domain.transaction.repository.TransactionRepository;
 import com.backend.global.security.SecurityUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -41,32 +45,53 @@ public class ContractService {
     private final SavingProductRepository savingProductRepository;
     private final SavingContractRepository savingContractRepository;
     private final AccountRepository accountRepository;
+    private final TransactionRepository transactionRepository;
 
+    @Transactional
     public DepositSubscriptionResponseDto subscribeDeposit(DepositSubscriptionRequestDto requestDto, SecurityUser securityUser) {
+        log.info("예금 계약 요청 - 사용자: {}, 상품: {}, 금액: {}원",
+                securityUser.getId(), requestDto.getProductCode(), requestDto.getTotalAmount());
+
         LocalDate currentDate = LocalDate.now();
 
         // 1. 검증
         DepositProductOption option = depositProductOptionRepository.findById(requestDto.getOptionId())
-                .orElseThrow(() -> new NoSuchElementException("상품에 맞는 옵션을 찾을 수 없습니다: " + requestDto.getOptionId()));
+                .orElseThrow(() -> new NoSuchElementException("상품 옵션을 찾을 수 없습니다: " + requestDto.getOptionId()));
 
         DepositProduct product = validateAndGetDepositProduct(requestDto.getProductCode());
         LocalDate maturityDate = currentDate.plusMonths(option.getSaveTerm());
 
-        // 2. 계좌 생성
-        Account account = createAccount(securityUser.getId(), product.getCompanyCode(), maturityDate, AccountType.DEPOSIT, 0L);
+        // 2. 입출금계좌 조회 및 잔액 확인
+        Account checkingAccount = findUserCheckingAccount(securityUser.getId());
 
-        // 3. 정기예금 계약 생성
+        if (checkingAccount.getCurrentBalance() < requestDto.getTotalAmount()) {
+            throw new IllegalArgumentException("잔액이 부족합니다. 현재 잔액: " +
+                    checkingAccount.getCurrentBalance() + "원, 필요 금액: " + requestDto.getTotalAmount() + "원");
+        }
+
+        // 3. 예금계좌 생성 (즉시 전액 입금)
+        Account depositAccount = createAccount(securityUser.getId(), product.getCompanyCode(),
+                maturityDate, AccountType.DEPOSIT, requestDto.getTotalAmount());
+
+        // 4. 입출금계좌에서 예금계좌로 이체 처리
+        transferFromCheckingToDeposit(checkingAccount, depositAccount, requestDto.getTotalAmount());
+
+        // 5. 예금 계약 생성
         DepositContract depositContract = DepositContract.builder()
-                .userId(account.getUserId())
+                .userId(depositAccount.getUserId())
                 .depositProduct(product)
                 .contractDate(currentDate)
                 .maturityDate(maturityDate)
                 .depositProductOption(option)
-                .payment(account.getCurrentBalance())
+                .payment(requestDto.getTotalAmount()) // 실제 납입 금액
                 .contractCondition(ContractCondition.IN_PROGRESS)
-                .accountId(account.getId())
+                .accountId(depositAccount.getId())
                 .build();
+
         depositContractRepository.save(depositContract);
+
+        log.info("예금 계약 완료 - 계약ID: {}, 계좌ID: {}, 납입액: {}원",
+                depositContract.getContractId(), depositAccount.getId(), requestDto.getTotalAmount());
 
         return DepositSubscriptionResponseDto.builder()
                 .contractId(depositContract.getContractId())
@@ -82,9 +107,11 @@ public class ContractService {
                 .build();
     }
 
+    @Transactional
     public SavingSubscriptionResponseDto subscribeSaving(SavingSubscriptionRequestDto requestDto, SecurityUser securityUser) {
         LocalDate currentDate = LocalDate.now();
-        log.info(String.valueOf(requestDto));
+        log.info("적금 계약 요청 - 사용자: {}, 상품: {}, 월납입액: {}원",
+                securityUser.getId(), requestDto.getProductCode(), requestDto.getMonthlyAmount());
 
         // 1. 검증
         SavingProductOption option = savingProductOptionRepository.findById(requestDto.getOptionId())
@@ -93,22 +120,27 @@ public class ContractService {
         SavingProduct product = validateAndGetSavingProduct(requestDto.getProductCode());
         LocalDate maturityDate = currentDate.plusMonths(option.getSaveTerm());
 
-        // 2. 계좌 생성
-        Account account = createAccount(securityUser.getId(), product.getCompanyCode(), maturityDate, AccountType.SAVING, 0L);
+        // 2. 적금계좌 생성 (초기 잔액 0원)
+        Account savingAccount = createAccount(securityUser.getId(), product.getCompanyCode(),
+                maturityDate, AccountType.SAVING, 0L);
 
         // 3. 적금 계약 생성
         SavingContract savingContract = SavingContract.builder()
-                .userId(account.getUserId())
+                .userId(savingAccount.getUserId())
                 .savingProduct(product)
                 .contractDate(currentDate)
                 .maturityDate(maturityDate)
                 .savingProductOption(option)
                 .monthlyPayment(requestDto.getMonthlyAmount())
-                .currentPaymentCount(0)
+                .currentPaymentCount(0) // 초기 납입 횟수 0
                 .contractCondition(ContractCondition.IN_PROGRESS)
-                .accountId(account.getId())
+                .accountId(savingAccount.getId())
                 .build();
+
         savingContractRepository.save(savingContract);
+
+        log.info("적금 계약 완료 - 계약ID: {}, 계좌ID: {}, 월납입액: {}원",
+                savingContract.getContractId(), savingAccount.getId(), requestDto.getMonthlyAmount());
 
         return SavingSubscriptionResponseDto.builder()
                 .contractId(savingContract.getContractId())
@@ -126,18 +158,60 @@ public class ContractService {
                 .build();
     }
 
+    // 입출금계좌에서 예금계좌로 이체 처리
+    @Transactional
+    public void transferFromCheckingToDeposit(Account checkingAccount, Account depositAccount, Long amount) {
+        log.info("예금 납입 이체 - 입출금계좌: {} → 예금계좌: {}, 금액: {}원",
+                checkingAccount.getId(), depositAccount.getId(), amount);
+
+        // 입출금계좌 잔액 차감
+        checkingAccount.setCurrentBalance(checkingAccount.getCurrentBalance() - amount);
+        checkingAccount.setLastTransactionDate(LocalDateTime.now());
+        accountRepository.save(checkingAccount);
+
+        // 예금계좌 잔액은 이미 생성 시 설정됨
+        depositAccount.setLastTransactionDate(LocalDateTime.now());
+        accountRepository.save(depositAccount);
+
+        // 거래내역 생성 (예금 납입)
+        Transaction transaction = Transaction.builder()
+                .transactionType(TransactionType.PAYMENT) // 예금 납입
+                .amount(amount)
+                .fromAccountId(checkingAccount.getId())
+                .toAccountId(depositAccount.getId())
+                .currentBalance(depositAccount.getCurrentBalance()) // 예금계좌 잔액
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        transactionRepository.save(transaction);
+
+        log.info("예금 납입 완료 - 거래ID: {}, 입출금계좌 잔액: {}원, 예금계좌 잔액: {}원",
+                transaction.getTransactionId(), checkingAccount.getCurrentBalance(), depositAccount.getCurrentBalance());
+    }
+
     // 공통 계좌 생성 로직
-    private Account createAccount(Long userId, String companyCode, LocalDate maturityDate, AccountType accountType, Long payment) {
+    private Account createAccount(Long userId, String companyCode, LocalDate maturityDate, AccountType accountType, Long initialBalance) {
         Account account = Account.builder()
                 .userId(userId)
                 .companyCode(companyCode)
-                .currentBalance(payment)
+                .currentBalance(initialBalance)
                 .accountState(AccountState.ACTIVE)
                 .lastTransactionDate(LocalDateTime.now())
                 .maturityDate(maturityDate)
                 .accountType(accountType)
                 .build();
         return accountRepository.save(account);
+    }
+
+    // 사용자의 입출금계좌 찾기
+    private Account findUserCheckingAccount(Long userId) {
+        return accountRepository.findByUserId(userId)
+                .orElse(List.of())
+                .stream()
+                .filter(account -> account.getAccountType() == AccountType.CHECK &&
+                        account.getAccountState() == AccountState.ACTIVE)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("입출금계좌가 없습니다. 먼저 입출금계좌를 개설해주세요."));
     }
 
     // 검증 로직 분리
@@ -181,7 +255,6 @@ public class ContractService {
                 .interestRate2(option.getInterestRate2())
                 .build();
     }
-
 
     // 만기정산 메인 메서드
     public MaturityCalculationDto calculateMaturity(Integer accountId, SecurityUser securityUser) {
@@ -367,16 +440,5 @@ public class ContractService {
 
         log.debug("적금 총 이자 계산 결과: {}원", totalInterest);
         return totalInterest;
-    }
-
-    // 🔍 6. 사용자의 입출금계좌 찾기
-    private Account findUserCheckingAccount(Long userId) {
-        return accountRepository.findByUserId(userId)
-                .orElse(List.of())
-                .stream()
-                .filter(account -> account.getAccountType() == AccountType.CHECK &&
-                        account.getAccountState() == AccountState.ACTIVE)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("입출금계좌가 없습니다. 먼저 입출금계좌를 개설해주세요."));
     }
 }

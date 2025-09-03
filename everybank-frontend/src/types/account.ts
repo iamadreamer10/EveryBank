@@ -7,8 +7,12 @@ export interface Account {
     accountType: 'CHECK' | 'DEPOSIT' | 'SAVING';
     startDate: string;
     endDate?: string;
-    interestRate?: number;
     status: 'active' | 'matured' | 'closed';
+    monthlyPayment?: number | null; // 적금의 월납입액
+    currentPaymentCount?: number | null; // 현재 납입 회차
+    totalPaymentCount?: number | null; // 총 납입 회차
+    nextPaymentDate?: string | null; // 다음 납입일
+    totalDepositAmount?: number | null; // 예금의 총 예치금액
 }
 
 export interface TransactionHistory {
@@ -74,6 +78,7 @@ export interface AccountTransactionModalProps {
     bank: string;
     currentBalance: number;
     isMatured: boolean;
+    monthlyPayment?: number | null; // 적금의 월납입액
     transactionType: 'deposit' | 'withdraw' | 'payment' | 'refund';
     onSuccess: () => void;
 }

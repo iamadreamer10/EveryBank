@@ -2,6 +2,7 @@ package com.backend.domain.account.controller;
 
 import com.backend.domain.account.dto.CheckingAccountRequestDto;
 import com.backend.domain.account.dto.CheckingAccountResponseDto;
+import com.backend.domain.account.dto.CheckingBalanceDto;
 import com.backend.domain.account.dto.MyAccountListInfoDto;
 import com.backend.domain.account.service.AccountService;
 import com.backend.domain.transaction.dto.*;
@@ -73,6 +74,11 @@ public class AccountController {
         return BaseResponse.success(SuccessCode.CREATE_SUCCESS, transaction);
     }
 
-
+    @GetMapping("/check_balance")
+    public ResponseEntity<BaseResponse<CheckingBalanceDto>> getCheckingBalance(
+            @AuthenticationPrincipal SecurityUser securityUser) {
+        CheckingBalanceDto balance = accountService.getCheckingBalance(securityUser.getId());
+        return BaseResponse.success(SuccessCode.SELECT_SUCCESS, balance);
+    }
 
 }

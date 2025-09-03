@@ -30,7 +30,6 @@ const executeTransaction = async (
 
     const requestbody = getRequestBody();
 
-
     const response = await fetch(`http://localhost:8080/${endpoints[transactionType]}`, {
         method: 'POST',
         headers: {
@@ -44,6 +43,20 @@ const executeTransaction = async (
     return response.json();
 };
 
+// 입출금계좌 잔액 확인 함수
+const fetchCheckingAccountBalance = async (): Promise<number> => {
+    const response = await fetch('http://localhost:8080/my_account/check_balance', {
+        headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('accessToken')}`,
+            'Content-Type': 'application/json'
+        }
+    });
+
+    if (!response.ok) throw new Error('입출금계좌 조회 실패');
+    const data = await response.json();
+    return data.result.currentBalance;
+};
+
 export default function AccountTransactionModal({
                                                     isOpen,
                                                     onClose,
@@ -52,20 +65,34 @@ export default function AccountTransactionModal({
                                                     bank,
                                                     currentBalance,
                                                     isMatured,
+                                                    monthlyPayment,
                                                     transactionType,
                                                     onSuccess
                                                 }: AccountTransactionModalProps) {
     const [amount, setAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRefund, setIsRefund] = useState(false);
+    const [checkingBalance, setCheckingBalance] = useState<number | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         if (isOpen && transactionType === 'refund') {
             setAmount(currentBalance.toString());
             setIsRefund(true);
+        } else if (isOpen && transactionType === 'payment' && monthlyPayment) {
+            // 적금 납입 시 월납입액으로 고정
+            setAmount(monthlyPayment.toString());
+
+
+            // 입출금계좌 잔액 조회
+            fetchCheckingAccountBalance()
+                .then(setCheckingBalance)
+                .catch(console.error);
+        } else if (isOpen) {
+            setAmount('');
+            setCheckingBalance(null);
         }
-    }, [isOpen, transactionType, currentBalance]);
+    }, [isOpen, transactionType, currentBalance, monthlyPayment]);
 
     // 거래 타입별 설정
     const configs = {
@@ -89,6 +116,18 @@ export default function AccountTransactionModal({
         if (config.needsBalanceCheck && amountValue > currentBalance) {
             alert('잔액이 부족합니다.');
             return;
+        }
+
+        // 적금 납입 시 입출금계좌 잔액 확인
+        if (transactionType === 'payment') {
+            if (checkingBalance === null) {
+                alert('입출금계좌 정보를 확인할 수 없습니다.');
+                return;
+            }
+            if (checkingBalance < amountValue) {
+                alert(`입출금계좌 잔액이 부족합니다. (보유: ${checkingBalance.toLocaleString()}원)`);
+                return;
+            }
         }
 
         if (transactionType === 'refund') {
@@ -133,6 +172,23 @@ export default function AccountTransactionModal({
                         <h4 className="font-medium mb-2">{bank} | {accountName}</h4>
                         <p className="text-sm">현재 잔액: <span
                             className="font-medium text-bank-primary">{currentBalance.toLocaleString()}원</span></p>
+
+                        {/* 적금 납입 시 입출금계좌 잔액 표시 */}
+                        {transactionType === 'payment' && checkingBalance !== null && (
+                            <p className="text-sm text-blue-600 mt-1">
+                                입출금계좌 잔액: <span className="font-medium">{checkingBalance.toLocaleString()}원</span>
+                            </p>
+                        )}
+
+                        {/* 적금 납입 시 월납입액 안내 */}
+                        {transactionType === 'payment' && monthlyPayment && (
+                            <p className="text-sm text-purple-600 mt-2">
+                                월납입액: <span className="font-medium">{monthlyPayment.toLocaleString()}원</span>
+                                <span className="text-xs text-gray-500 block mt-1">
+                                    (계약 시 정해진 고정 금액입니다)
+                                </span>
+                            </p>
+                        )}
                     </div>
 
                     <form onSubmit={handleSubmit}>
@@ -142,10 +198,20 @@ export default function AccountTransactionModal({
                             onChange={(e) => setAmount(e.target.value)}
                             placeholder={`${config.title}할 금액을 입력하세요`}
                             className="w-full px-3 py-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bank-primary"
-                            disabled={isSubmitting || isRefund}
-                            readOnly={isRefund}
+                            disabled={isSubmitting || isRefund || (transactionType === 'payment')}
+                            readOnly={isRefund || (transactionType === 'payment')}
                             required
                         />
+
+                        {/* 적금 납입 시 추가 안내 메시지 */}
+                        {transactionType === 'payment' && (
+                            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                <p className="text-sm text-yellow-800">
+                                    💡 적금 납입액은 계약 시 정해진 금액으로 고정됩니다.
+                                    입출금계좌에서 자동으로 차감됩니다.
+                                </p>
+                            </div>
+                        )}
 
                         <div className="flex gap-3">
                             <button
@@ -159,7 +225,7 @@ export default function AccountTransactionModal({
                             <button
                                 type="submit"
                                 className={`flex-1 px-4 py-2 text-white rounded-md ${config.color} disabled:opacity-50`}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || (transactionType === 'payment' && (checkingBalance === null || checkingBalance < Number(amount)))}
                             >
                                 {isSubmitting ? '처리중...' : `${config.title}하기`}
                             </button>

@@ -56,11 +56,11 @@ public class AccountService {
 
         // 2. 필요한 데이터 배치 조회
         Map<String, String> bankNames = loadBankNames(accounts);
-        Map<Integer, ContractInfo> contractInfos = loadContractInfos(accounts);
+        Map<Integer, ContractInfo> contractInfos = loadEnhancedContractInfos(accounts);
 
         // 3. DTO 변환
         List<AccountInfoDto> accountInfoList = accounts.stream()
-                .map(account -> buildAccountInfoDto(account, bankNames, contractInfos))
+                .map(account -> buildEnhancedAccountInfoDto(account, bankNames, contractInfos))
                 .collect(Collectors.toList());
 
         return MyAccountListInfoDto.builder()
@@ -69,22 +69,8 @@ public class AccountService {
                 .build();
     }
 
-    // 은행명 배치 조회
-    private Map<String, String> loadBankNames(List<Account> accounts) {
-        Set<String> companyCodes = accounts.stream()
-                .map(Account::getCompanyCode)
-                .collect(Collectors.toSet());
-
-        return finCompanyRepository.findByCompanyCodeIn(companyCodes)
-                .stream()
-                .collect(Collectors.toMap(
-                        FinCompany::getCompanyCode,
-                        FinCompany::getCompanyName
-                ));
-    }
-
-    // 계약 정보 배치 조회
-    private Map<Integer, ContractInfo> loadContractInfos(List<Account> accounts) {
+    // 향상된 계약 정보 배치 조회 (적금/예금 상세정보 포함)
+    private Map<Integer, ContractInfo> loadEnhancedContractInfos(List<Account> accounts) {
         Map<Integer, ContractInfo> result = new HashMap<>();
 
         // 예금 계좌들의 계약 정보
@@ -102,6 +88,7 @@ public class AccountService {
                         .productName(contract.getDepositProduct().getProductName())
                         .contractDate(contract.getContractDate())
                         .endDate(contract.getMaturityDate())
+                        .totalAmount(contract.getPayment()) // 예금 총액
                         .build());
             });
         }
@@ -121,6 +108,9 @@ public class AccountService {
                         .productName(contract.getSavingProduct().getProductName())
                         .contractDate(contract.getContractDate())
                         .endDate(contract.getMaturityDate())
+                        .monthlyPayment(contract.getMonthlyPayment()) // 월납입액
+                        .currentPaymentCount(contract.getCurrentPaymentCount()) // 현재 납입횟수
+                        .totalPaymentCount(contract.getSavingProductOption().getSaveTerm()) // 총 납입횟수
                         .build());
             });
         }
@@ -128,53 +118,89 @@ public class AccountService {
         return result;
     }
 
-    // DTO 빌드
-    private AccountInfoDto buildAccountInfoDto(Account account,
-                                               Map<String, String> bankNames,
-                                               Map<Integer, ContractInfo> contractInfos) {
+    // 향상된 DTO 빌더 (적금/예금 정보 포함)
+    private AccountInfoDto buildEnhancedAccountInfoDto(Account account,
+                                                       Map<String, String> bankNames,
+                                                       Map<Integer, ContractInfo> contractInfos) {
 
         String bankName = bankNames.getOrDefault(account.getCompanyCode(), "알 수 없음");
 
-        String productName;
-        String startDate;
-        String endDate;
+        // 기본 정보 설정
+        AccountInfoDto.AccountInfoDtoBuilder builder = AccountInfoDto.builder()
+                .accountId(account.getId())
+                .accountName(generateAccountName(account))
+                .balance(account.getCurrentBalance())
+                .bank(bankName)
+                .accountType(account.getAccountType().toString())
+                .status(account.getAccountState().toString().toLowerCase());
 
         if (account.getAccountType() == AccountType.CHECK) {
-            // 입출금계좌는 Contract가 없음
-            productName = "입출금계좌";
-            startDate = account.getLastTransactionDate() != null ?
-                    account.getLastTransactionDate().toLocalDate()
-                            .format(DateTimeFormatter.ofPattern("yyyy.MM.dd")) : "";
-            endDate = "2099.12.31";
+            // 입출금계좌 정보
+            builder.productName("입출금계좌")
+                    .startDate(account.getLastTransactionDate() != null ?
+                            account.getLastTransactionDate().toLocalDate()
+                                    .format(DateTimeFormatter.ofPattern("yyyy.MM.dd")) : "")
+                    .endDate("2099.12.31");
+
         } else {
-            // 예금/적금은 Contract에서 정보 가져오기
+            // 예금/적금 계좌 정보
             ContractInfo contractInfo = contractInfos.get(account.getId());
             if (contractInfo != null) {
-                productName = contractInfo.getProductName();
-                startDate = contractInfo.getContractDate()
-                        .format(DateTimeFormatter.ofPattern("yyyy.MM.dd"));
-                endDate = contractInfo.getEndDate()
-                        .format(DateTimeFormatter.ofPattern("yyyy.MM.dd"));
-            } else {
-                productName = "상품정보 없음";
-                startDate = "";
-                endDate = "";
+                builder.productName(contractInfo.getProductName())
+                        .startDate(contractInfo.getContractDate()
+                                .format(DateTimeFormatter.ofPattern("yyyy.MM.dd")))
+                        .endDate(contractInfo.getEndDate()
+                                .format(DateTimeFormatter.ofPattern("yyyy.MM.dd")));
 
+                if (account.getAccountType() == AccountType.SAVING) {
+                    // 🆕 적금 전용 정보
+                    builder.monthlyPayment(contractInfo.getMonthlyPayment())
+                            .currentPaymentCount(contractInfo.getCurrentPaymentCount())
+                            .totalPaymentCount(contractInfo.getTotalPaymentCount())
+                            .nextPaymentDate(calculateNextPaymentDate(contractInfo));
+
+                } else if (account.getAccountType() == AccountType.DEPOSIT) {
+                    // 🆕 예금 전용 정보
+                    builder.totalDepositAmount(contractInfo.getTotalAmount());
+                }
+            } else {
+                builder.productName("상품정보 없음")
+                        .startDate("")
+                        .endDate("");
             }
         }
 
-        return AccountInfoDto.builder()
-                .accountId(account.getId())
-                .accountName(generateAccountName(account)) // 임시로 생성
-                .balance(account.getCurrentBalance())
-                .bank(bankName)
-                .productName(productName)
-                .accountType(account.getAccountType().toString())
-                .startDate(startDate)
-                .endDate(endDate)
-                .status(account.getAccountState().toString().toLowerCase())
-                .build();
+        return builder.build();
     }
+
+    // 다음 납입 예정일 계산 (적금용)
+    private String calculateNextPaymentDate(ContractInfo contractInfo) {
+        if (contractInfo.getCurrentPaymentCount() >= contractInfo.getTotalPaymentCount()) {
+            return "만기완료"; // 이미 모든 납입을 완료한 경우
+        }
+
+        // 다음달 같은 날짜로 계산 (간단화)
+        LocalDate nextPayment = contractInfo.getContractDate()
+                .plusMonths(contractInfo.getCurrentPaymentCount() + 1);
+
+        return nextPayment.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+    }
+
+
+    // 은행명 배치 조회
+    private Map<String, String> loadBankNames(List<Account> accounts) {
+        Set<String> companyCodes = accounts.stream()
+                .map(Account::getCompanyCode)
+                .collect(Collectors.toSet());
+
+        return finCompanyRepository.findByCompanyCodeIn(companyCodes)
+                .stream()
+                .collect(Collectors.toMap(
+                        FinCompany::getCompanyCode,
+                        FinCompany::getCompanyName
+                ));
+    }
+
 
     // 임시 계좌명 생성 (나중에 DB 컬럼 추가 또는 사용자 설정 기능)
     private String generateAccountName(Account account) {
@@ -329,7 +355,12 @@ public class AccountService {
             throw new IllegalArgumentException("입출금계좌로는 납입할 수 없습니다.");
         }
 
-        // 6. 상품계좌 상태 검증
+        // ⚠️ 새로 추가: 예금계좌 납입 제한
+        if (productAccount.getAccountType() == AccountType.DEPOSIT) {
+            throw new IllegalArgumentException("예금계좌는 계약 시에만 납입되며, 추가 납입이 불가능합니다.");
+        }
+
+        // 6. 상품계좌 상태 검증 (적금만 해당)
         if (productAccount.getAccountState() != AccountState.ACTIVE) {
             throw new IllegalArgumentException("활성 상태의 상품계좌만 납입 가능합니다.");
         }
@@ -339,50 +370,63 @@ public class AccountService {
             throw new IllegalArgumentException("잔액이 부족합니다. 현재 잔액: " + checkingAccount.getCurrentBalance() + "원");
         }
 
-        // 8. 계좌 잔액 업데이트
-        checkingAccount.setCurrentBalance(checkingAccount.getCurrentBalance() - requestDto.getAmount());
-        checkingAccount.setLastTransactionDate(LocalDateTime.now());
-
-        productAccount.setCurrentBalance(productAccount.getCurrentBalance() + requestDto.getAmount());
-        productAccount.setLastTransactionDate(LocalDateTime.now());
-
-        accountRepository.save(checkingAccount);
-        accountRepository.save(productAccount);
-
-        // 9. 적금인 경우 납입 횟수 증가 및 최근 납입일 업데이트
+        // 8. 적금인 경우에만 계속 진행
         if (productAccount.getAccountType() == AccountType.SAVING) {
-            SavingContract savingContract = savingContractRepository.findByAccountId(productAccount.getId())
-                    .orElseThrow(() -> new NoSuchElementException("적금 계약을 찾을 수 없습니다: " + productAccount.getId()));
-
-            // 납입 횟수 증가
-            savingContract.setCurrentPaymentCount(savingContract.getCurrentPaymentCount() + 1);
-            savingContract.setLatestPaymentDate(LocalDate.now());
-
-            savingContractRepository.save(savingContract);
-
-            log.info("적금 납입 완료 - 계약ID: {}, 납입 횟수: {}/{}회, 납입액: {}원",
-                    savingContract.getContractId(),
-                    savingContract.getCurrentPaymentCount(),
-                    savingContract.getSavingProductOption().getSaveTerm(),
-                    requestDto.getAmount());
+            // 적금 납입 로직
+            return processSavingPayment(checkingAccount, productAccount, requestDto.getAmount());
         }
 
-        // 10. 거래내역 저장
+        throw new IllegalArgumentException("지원하지 않는 계좌 타입입니다: " + productAccount.getAccountType());
+    }
+
+    // 적금 납입 처리 (분리된 메서드)
+    @Transactional
+    public TransactionResponseDto processSavingPayment(Account checkingAccount, Account savingAccount, Long amount) {
+        log.info("적금 납입 처리 - 입출금계좌: {}, 적금계좌: {}, 금액: {}원",
+                checkingAccount.getId(), savingAccount.getId(), amount);
+
+        // 1. 계좌 잔액 업데이트
+        checkingAccount.setCurrentBalance(checkingAccount.getCurrentBalance() - amount);
+        checkingAccount.setLastTransactionDate(LocalDateTime.now());
+
+        savingAccount.setCurrentBalance(savingAccount.getCurrentBalance() + amount);
+        savingAccount.setLastTransactionDate(LocalDateTime.now());
+
+        accountRepository.save(checkingAccount);
+        accountRepository.save(savingAccount);
+
+        // 2. 적금 계약 정보 업데이트 (납입 횟수 증가)
+        SavingContract savingContract = savingContractRepository.findByAccountId(savingAccount.getId())
+                .orElseThrow(() -> new NoSuchElementException("적금 계약을 찾을 수 없습니다: " + savingAccount.getId()));
+
+        // 납입 횟수 증가
+        savingContract.setCurrentPaymentCount(savingContract.getCurrentPaymentCount() + 1);
+        savingContract.setLatestPaymentDate(LocalDate.now());
+        savingContractRepository.save(savingContract);
+
+        log.info("적금 납입 완료 - 계약ID: {}, 납입 횟수: {}/{}회, 납입액: {}원",
+                savingContract.getContractId(),
+                savingContract.getCurrentPaymentCount(),
+                savingContract.getSavingProductOption().getSaveTerm(),
+                amount);
+
+        // 3. 거래내역 저장
         Transaction transaction = Transaction.builder()
                 .transactionType(TransactionType.PAYMENT)
-                .amount(requestDto.getAmount())
+                .amount(amount)
                 .fromAccountId(checkingAccount.getId())
-                .toAccountId(requestDto.getToAccountId())
+                .toAccountId(savingAccount.getId())
                 .currentBalance(checkingAccount.getCurrentBalance())
                 .createdAt(LocalDateTime.now())
                 .build();
 
         Transaction savedTransaction = transactionRepository.save(transaction);
-        log.info("납입 완료 - 거래ID: {}, 상품: {} → 입출금계좌 잔액: {}",
-                savedTransaction.getTransactionId(), productAccount.getAccountType(), checkingAccount.getCurrentBalance());
+        log.info("적금 납입 거래내역 저장 완료 - 거래ID: {}, 입출금계좌 잔액: {}원",
+                savedTransaction.getTransactionId(), checkingAccount.getCurrentBalance());
 
         return buildTransactionResponse(savedTransaction, checkingAccount.getCurrentBalance());
     }
+
 
     // 금융상품 → 입출금계좌 (환급) - 전액 자동 환급
     @Transactional
@@ -480,6 +524,36 @@ public class AccountService {
                 .createdAt(transaction.getCreatedAt())
                 .checkingAccountBalance(checkingAccountBalance)
                 .build();
+    }
+
+    public CheckingBalanceDto getCheckingBalance(Long userId) {
+        log.info("입출금계좌 잔액 조회 - 사용자: {}", userId);
+
+        // 1. 사용자의 입출금계좌 찾기
+        Account checkingAccount = findUserCheckingAccount(userId);
+
+        // 2. 은행명 조회
+        String bankName = finCompanyRepository.findFinCompanyByCompanyCode(
+                checkingAccount.getCompanyCode()).getCompanyName();
+
+        // 3. 최근 거래일시 포맷팅
+        String lastTransactionDate = checkingAccount.getLastTransactionDate() != null
+                ? checkingAccount.getLastTransactionDate()
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                : "";
+
+        // 4. DTO 생성
+        CheckingBalanceDto balanceDto = CheckingBalanceDto.builder()
+                .accountId(checkingAccount.getId())
+                .currentBalance(checkingAccount.getCurrentBalance())
+                .bankName(bankName)
+                .lastTransactionDate(lastTransactionDate)
+                .build();
+
+        log.info("입출금계좌 잔액 조회 완료 - 계좌ID: {}, 잔액: {}원",
+                checkingAccount.getId(), checkingAccount.getCurrentBalance());
+
+        return balanceDto;
     }
 
 }

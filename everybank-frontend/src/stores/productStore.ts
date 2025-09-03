@@ -11,7 +11,7 @@ interface ProductState {
     productCode: string | null;
     productName: string;
     bankName: string;
-    productType: 'deposits' | 'savings' | null;
+    productType: 'deposit' | 'saving' | null;
     amount: number;
     selectedOption: SelectedOption | null;
 
@@ -20,7 +20,7 @@ interface ProductState {
         productCode: string;
         productName: string;
         bankName: string;
-        productType: 'deposits' | 'savings';
+        productType: 'deposit' | 'saving';
     }) => void;
 
     setAmount: (amount: number) => void;
