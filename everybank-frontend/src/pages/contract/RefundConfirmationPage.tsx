@@ -28,7 +28,7 @@ interface RefundData {
 
     // 현재 상태
     currentCheckAmount: number;
-    isMatured: boolean;
+    matured: boolean;
 }
 
 // 환급 정보 조회 API
@@ -83,6 +83,7 @@ export default function RefundConfirmationPage() {
             setLoading(true);
             const data = await fetchRefundData(id);
             console.log(data);
+            console.log(data.matured);
             setRefundData(data);
             setError(null);
         } catch (error) {
@@ -96,7 +97,7 @@ export default function RefundConfirmationPage() {
     const handleRefund = async () => {
         if (!refundData) return;
 
-        const actionText = refundData.isMatured ? '만기환급' : '중도해지';
+        const actionText = refundData.matured ? '만기환급' : '중도해지';
 
         if (!window.confirm(`정말 ${actionText}하시겠습니까?\n환급액: ${refundData.totalPayout.toLocaleString()}원`)) {
             return;
@@ -152,7 +153,6 @@ export default function RefundConfirmationPage() {
         );
     }
 
-    const isMatured = refundData.isMatured;
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -168,7 +168,7 @@ export default function RefundConfirmationPage() {
 
             <div className="text-center mb-8">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                    {isMatured ? '만기정산' : '중도해지'}
+                    {refundData.matured ? '만기정산' : '중도해지'}
                 </h1>
             </div>
 
@@ -223,7 +223,7 @@ export default function RefundConfirmationPage() {
             </div>
 
             {/* 축하 메시지 (만기인 경우만) */}
-            {isMatured && (
+            {refundData.matured && (
                 <div className="text-center mb-8">
                     <div className="text-4xl mb-2">🎉</div>
                     <h2 className="text-xl font-bold text-bank-primary mb-2">
@@ -268,12 +268,12 @@ export default function RefundConfirmationPage() {
                     disabled={isProcessing}
                     className="px-8 py-3 bg-bank-success text-white rounded-md hover:bg-bank-dark font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {isProcessing ? '처리중...' : (isMatured ? '만기환급' : '중도해지')}
+                    {isProcessing ? '처리중...' : (refundData.matured ? '만기환급' : '중도해지')}
                 </button>
             </div>
 
             {/* 주의사항 */}
-            {!isMatured && (
+            {!refundData.matured && (
                 <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-sm text-yellow-800">
                         ⚠️ 해당 상품을 다시 가입하고 싶으시다면?

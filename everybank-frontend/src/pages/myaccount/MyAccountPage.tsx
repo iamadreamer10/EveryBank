@@ -49,7 +49,7 @@ export default function MyAccountPage() {
             setError(null);
 
             const data = await fetchAccounts();
-            // console.log(data.result.accountList);
+            console.log(data.result.accountList);
             setAccounts(data.result.accountList);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다';
