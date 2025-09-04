@@ -47,7 +47,7 @@ const fetchRefundData = async (accountId: string): Promise<RefundData> => {
 };
 
 // 환급 실행 API
-const executeRefund = async (accountId: number, amount: number) => {
+const executeRefund = async (accountId: number, totalAmount: number) => {
     const response = await fetch(`http://localhost:8080/my_account/refund`, {
         method: 'POST',
         headers: {
@@ -56,7 +56,7 @@ const executeRefund = async (accountId: number, amount: number) => {
         },
         body: JSON.stringify({
             fromAccountId: accountId,
-            amount: amount
+            totalAmount: totalAmount
         })
     });
 
@@ -217,7 +217,7 @@ export default function RefundConfirmationPage() {
 
                 <div className="text-right">
                     <p className="text-2xl font-bold text-bank-primary">
-                        {refundData.currentCheckAmount.toLocaleString()}원
+                        {refundData.totalPrincipal.toLocaleString()}원
                     </p>
                 </div>
             </div>

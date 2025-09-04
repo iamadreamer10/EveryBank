@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class RefundRequestDto {
     private Integer fromAccountId;
-    private Long amount;
+    private Long totalAmount;
 }

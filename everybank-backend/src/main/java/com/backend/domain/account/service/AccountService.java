@@ -431,8 +431,8 @@ public class AccountService {
     // 금융상품 → 입출금계좌 (환급) - 전액 자동 환급
     @Transactional
     public TransactionResponseDto refundFromProduct(RefundRequestDto requestDto, SecurityUser securityUser) {
-        log.info("전액 환급 요청 - 사용자: {}, 상품계좌: {}",
-                securityUser.getId(), requestDto.getFromAccountId());
+        log.info("전액 환급 요청 - 사용자: {}, 상품계좌: {}, 환급액: {}",
+                securityUser.getId(), requestDto.getFromAccountId(), requestDto.getTotalAmount());
 
         // 1. 사용자의 입출금계좌 찾기
         Account checkingAccount = findUserCheckingAccount(securityUser.getId());
@@ -458,7 +458,7 @@ public class AccountService {
         }
 
         // 6. 환급할 전액 확인
-        Long refundAmount = productAccount.getCurrentBalance();
+        Long refundAmount = requestDto.getTotalAmount();
         if (refundAmount <= 0) {
             throw new IllegalArgumentException("환급할 금액이 없습니다. 상품계좌 잔액: " + refundAmount + "원");
         }

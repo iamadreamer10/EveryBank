@@ -324,24 +324,6 @@ export default function MyAccountDetailPage() {
                 </div>
             )}
 
-            {/* 액션 버튼 */}
-            <div className="flex justify-center gap-4 mb-8">
-                {contractInfo.contractType !== 'CHECKING' && (
-                    <button
-                        onClick={handleTerminate}
-                        className="px-8 py-3 bg-red-500 text-white rounded-md hover:bg-red-600 font-medium"
-                    >
-                        해지하기
-                    </button>
-                )}
-                <button
-                    onClick={handleDeposit}
-                    className="px-8 py-3 bg-bank-success text-white rounded-md hover:bg-bank-dark font-medium"
-                >
-                    입금하기
-                </button>
-            </div>
-
             {/* 거래내역 */}
             <div className="bg-white rounded-lg border border-gray-200">
                 <div className="p-6 border-b">

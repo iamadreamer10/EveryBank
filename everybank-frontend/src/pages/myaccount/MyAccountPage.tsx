@@ -152,7 +152,7 @@ export default function MyAccountPage() {
             {/* 헤더 */}
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-bank-primary mb-2">
-                    반갑습니다! {user?.nickname}
+                    반갑습니다! {user?.nickname}님
                 </h1>
                 <p className="text-gray-600">
                     총 {accounts.length}개의 계좌가 있습니다

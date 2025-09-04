@@ -300,19 +300,40 @@ public class ContractService {
                 contract.getDepositProductOption().getSaveTerm(),
                 contract.getDepositProductOption().getInterestRate2());
 
-        // 기본 정보 추출
-        Long principal = contract.getPayment(); // 원금
-        Integer termMonths = contract.getDepositProductOption().getSaveTerm(); // 기간(개월)
-        BigDecimal interestRate = contract.getDepositProductOption().getInterestRate2(); // 우대금리
-        char rateType = contract.getDepositProductOption().getInterestRateType(); // 금리유형
+        Long principal = contract.getPayment();
+        LocalDate contractDate = contract.getContractDate();
+        LocalDate maturityDate = contract.getMaturityDate();
+        LocalDate currentDate = LocalDate.now();
+        BigDecimal contractInterestRate = contract.getDepositProductOption().getInterestRate2(); // 약정이율
+        char rateType = contract.getDepositProductOption().getInterestRateType();
 
-        // 이자 계산
-        Long interest = calculateDepositInterest(principal, interestRate, termMonths, rateType);
+        // 실제 운용기간 및 만기 여부 확인
+        LocalDate endDate = currentDate.isBefore(maturityDate) ? currentDate : maturityDate;
+        long actualDays = contractDate.until(endDate).getDays();
+        boolean isMatured = currentDate.isAfter(maturityDate) || currentDate.isEqual(maturityDate);
+
+        BigDecimal appliedInterestRate;
+        Long interest;
+
+        if (isMatured) {
+            // 🎉 만기 시: 약정이율 100% 보장
+            appliedInterestRate = contractInterestRate;
+            long totalContractDays = contractDate.until(maturityDate).getDays();
+            interest = calculateDepositInterestByDays(principal, appliedInterestRate, totalContractDays, rateType);
+
+            log.info("✅ 만기해지 - 약정이율 {}% 전액 적용, 만기일수: {}일", contractInterestRate, totalContractDays);
+
+        } else {
+            // 🚨 중도해지 시: 변경 후 규칙 적용 (약정이율 × 50% + 최저이율 보장)
+            appliedInterestRate = calculateEarlyTerminationRate(contractInterestRate, actualDays);
+            interest = calculateDepositInterestByDays(principal, appliedInterestRate, actualDays, rateType);
+
+            log.warn("⚠️ 중도해지 - 약정이율: {}%, 적용이율: {}%, 보유일수: {}일",
+                    contractInterestRate, appliedInterestRate, actualDays);
+        }
+
         Long totalPayout = principal + interest;
 
-        // 만기 도래 여부 확인
-        boolean isMatured = LocalDate.now().isAfter(depositAccount.getMaturityDate()) ||
-                LocalDate.now().isEqual(depositAccount.getMaturityDate());
 
         log.info("예금 만기정산 완료 - 원금: {}원, 이자: {}원, 총액: {}원, 만기여부: {}",
                 principal, interest, totalPayout, isMatured);
@@ -324,7 +345,7 @@ public class ContractService {
                 .companyName(contract.getDepositProduct().getCompanyName())
                 .contractDate(contract.getContractDate())
                 .maturityDate(contract.getMaturityDate())
-                .saveTerm(termMonths)
+                .saveTerm(contract.getDepositProductOption().getSaveTerm())
                 .interestRate(contract.getDepositProductOption().getInterestRate())
                 .interestRate2(contract.getDepositProductOption().getInterestRate2())
                 .interestRateTypeName(contract.getDepositProductOption().getInterestRateTypeName())
@@ -336,53 +357,113 @@ public class ContractService {
                 .build();
     }
 
+    // 중도해지 시 이자율 계산 (변경 후 규칙)
+    private BigDecimal calculateEarlyTerminationRate(BigDecimal contractRate, long holdingDays) {
+        // 기본 중도해지 이자율: 약정이율 × 50%
+        BigDecimal baseEarlyRate = contractRate.multiply(BigDecimal.valueOf(0.5));
+
+        // 보유기간별 최저이율 보장
+        BigDecimal minimumRate = getMinimumRateByHoldingPeriod(holdingDays);
+
+        // 둘 중 높은 이자율 적용
+        BigDecimal appliedRate = baseEarlyRate.compareTo(minimumRate) >= 0 ? baseEarlyRate : minimumRate;
+
+        log.debug("중도해지 이자율 계산 - 약정: {}%, 기본중도: {}%, 최저보장: {}%, 최종적용: {}%",
+                contractRate, baseEarlyRate, minimumRate, appliedRate);
+
+        return appliedRate;
+    }
+
+    // 🔧 일 단위 예금 이자 계산 메서드 (누락된 메서드)
+    private Long calculateDepositInterestByDays(Long principal, BigDecimal yearlyRate, long days, char rateType) {
+        double rate = yearlyRate.doubleValue() / 100.0; // 연이율
+        double dailyRate = rate / 365.0; // 일이율
+
+        log.debug("예금 이자 계산 - 원금: {}원, 연이율: {}%, 운용일수: {}일, 유형: {}",
+                principal, yearlyRate, days, rateType == 'S' ? "단리" : "복리");
+
+        if (rateType == 'S') { // 단리
+            long interest = Math.round(principal * dailyRate * days);
+            log.debug("단리 계산 결과: {}원", interest);
+            return interest;
+        } else { // 복리 (일복리)
+            double compound = Math.pow(1 + dailyRate, days);
+            long interest = Math.round(principal * (compound - 1));
+            log.debug("복리 계산 결과: {}원 (복리계수: {})", interest, compound);
+            return interest;
+        }
+    }
+
+    private BigDecimal getMinimumRateByHoldingPeriod(long holdingDays) {
+        if (holdingDays < 30) { // 1개월 미만
+            return BigDecimal.valueOf(0.1);
+        } else if (holdingDays < 90) { // 1개월 이상 ~ 3개월 미만
+            return BigDecimal.valueOf(0.3);
+        } else { // 3개월 이상
+            return BigDecimal.valueOf(0.5);
+        }
+    }
+
     // 3. 적금 만기정산 계산
     private MaturityCalculationDto calculateSavingMaturity(Account savingAccount, Account checkingAccount) {
         log.info("적금 만기정산 계산 시작 - 계좌ID: {}", savingAccount.getId());
 
-        // 적금 계약 정보 조회
         SavingContract contract = savingContractRepository.findByAccountId(savingAccount.getId())
                 .orElseThrow(() -> new NoSuchElementException("적금 계약을 찾을 수 없습니다: " + savingAccount.getId()));
 
-        log.info("적금 계약 정보 - 계약ID: {}, 월납입액: {}원, 납입횟수: {}/{}회, 금리: {}%",
-                contract.getContractId(), contract.getMonthlyPayment(),
-                contract.getCurrentPaymentCount(), contract.getSavingProductOption().getSaveTerm(),
-                contract.getSavingProductOption().getInterestRate2());
+        Long monthlyPayment = contract.getMonthlyPayment();
+        Integer currentPaymentCount = contract.getCurrentPaymentCount();
+        LocalDate contractDate = contract.getContractDate();
+        LocalDate maturityDate = contract.getMaturityDate();
+        LocalDate currentDate = LocalDate.now();
+        BigDecimal contractInterestRate = contract.getSavingProductOption().getInterestRate2();
+        char rateType = contract.getSavingProductOption().getInterestRateType();
 
-        // 기본 정보 추출
-        Long monthlyPayment = contract.getMonthlyPayment(); // 월 납입액
-        Integer currentPaymentCount = contract.getCurrentPaymentCount(); // 현재 납입 횟수
-        Integer totalPaymentCount = contract.getSavingProductOption().getSaveTerm(); // 총 납입 횟수
-        BigDecimal interestRate = contract.getSavingProductOption().getInterestRate2(); // 우대금리
-        char rateType = contract.getSavingProductOption().getInterestRateType(); // 금리유형
-
-        // 원금 계산 (현재까지 납입한 금액)
+        // 원금 계산
         Long principal = monthlyPayment * currentPaymentCount;
+        boolean isMatured = currentDate.isAfter(maturityDate) || currentDate.isEqual(maturityDate);
 
-        // 적금 이자 계산 (매월 납입 기준)
-        Long interest = calculateSavingInterest(monthlyPayment, interestRate, currentPaymentCount, rateType);
+        Long interest;
+
+        if (isMatured) {
+            // 🎉 만기 시: 약정이율 100% 적용
+            interest = calculateSavingInterestByActualPayments(
+                    monthlyPayment, contractInterestRate, rateType,
+                    contractDate, maturityDate, maturityDate, currentPaymentCount);
+
+            log.info("✅ 적금 만기해지 - 약정이율 {}% 전액 적용", contractInterestRate);
+
+        } else {
+            // 🚨 중도해지 시: 각 납입회차별로 중도해지 이자율 적용
+            long holdingDays = contractDate.until(currentDate).getDays();
+            BigDecimal appliedRate = calculateEarlyTerminationRate(contractInterestRate, holdingDays);
+
+            interest = calculateSavingInterestByActualPayments(
+                    monthlyPayment, appliedRate, rateType,
+                    contractDate, currentDate, maturityDate, currentPaymentCount);
+
+            log.warn("⚠️ 적금 중도해지 - 약정이율: {}%, 적용이율: {}%, 보유일수: {}일",
+                    contractInterestRate, appliedRate, holdingDays);
+        }
+
         Long totalPayout = principal + interest;
 
-        // 만기 도래 여부 확인
-        boolean isMatured = LocalDate.now().isAfter(savingAccount.getMaturityDate()) ||
-                LocalDate.now().isEqual(savingAccount.getMaturityDate());
-
-        log.info("적금 만기정산 완료 - 원금: {}원({}회×{}원), 이자: {}원, 총액: {}원, 만기여부: {}",
-                principal, currentPaymentCount, monthlyPayment, interest, totalPayout, isMatured);
+        log.info("적금 정산 완료 - 원금: {}원({}회), 이자: {}원, 총액: {}원, 해지유형: {}",
+                principal, currentPaymentCount, interest, totalPayout, isMatured ? "만기해지" : "중도해지");
 
         return MaturityCalculationDto.builder()
                 .accountId(savingAccount.getId())
                 .accountType(savingAccount.getAccountType())
                 .productName(contract.getSavingProduct().getProductName())
                 .companyName(contract.getSavingProduct().getCompanyName())
-                .contractDate(contract.getContractDate())
-                .maturityDate(contract.getMaturityDate())
-                .saveTerm(totalPaymentCount)
+                .contractDate(contractDate)
+                .maturityDate(maturityDate)
+                .saveTerm(contract.getSavingProductOption().getSaveTerm())
                 .interestRate(contract.getSavingProductOption().getInterestRate())
-                .interestRate2(contract.getSavingProductOption().getInterestRate2())
+                .interestRate2(isMatured ? contractInterestRate : calculateEarlyTerminationRate(contractInterestRate, contractDate.until(currentDate).getDays()))
                 .interestRateTypeName(contract.getSavingProductOption().getInterestRateTypeName())
                 .monthlyPayment(monthlyPayment)
-                .totalPaymentCount(totalPaymentCount)
+                .totalPaymentCount(contract.getSavingProductOption().getSaveTerm())
                 .currentPaymentCount(currentPaymentCount)
                 .totalPrincipal(principal)
                 .totalInterest(interest)
@@ -392,50 +473,40 @@ public class ContractService {
                 .build();
     }
 
-    // 4. 예금 이자 계산 (단리/복리)
-    private Long calculateDepositInterest(Long principal, BigDecimal yearlyRate, Integer months, char rateType) {
-        double rate = yearlyRate.doubleValue() / 100.0; // 퍼센트를 소수로 변환
-        double monthlyRate = rate / 12.0; // 월 이율
+    private Long calculateSavingInterestByActualPayments(Long monthlyPayment, BigDecimal yearlyRate,
+                                                         char rateType, LocalDate contractDate, LocalDate currentDate, LocalDate maturityDate,
+                                                         Integer currentPaymentCount) {
 
-        log.debug("예금 이자 계산 - 원금: {}원, 연이율: {}%, 기간: {}개월, 유형: {}",
-                principal, yearlyRate, months, rateType == 'S' ? "단리" : "복리");
-
-        if (rateType == 'S') { // 단리 (Simple Interest)
-            long interest = Math.round(principal * monthlyRate * months);
-            log.debug("단리 계산 결과: {}원", interest);
-            return interest;
-        } else { // 복리 (Compound Interest)
-            double compound = Math.pow(1 + monthlyRate, months);
-            long interest = Math.round(principal * (compound - 1));
-            log.debug("복리 계산 결과: {}원 (복리계수: {})", interest, compound);
-            return interest;
-        }
-    }
-
-    // 5. 적금 이자 계산 (매월 납입 고려)
-    private Long calculateSavingInterest(Long monthlyPayment, BigDecimal yearlyRate, Integer paymentCount, char rateType) {
-        double rate = yearlyRate.doubleValue() / 100.0; // 퍼센트를 소수로 변환
-        double monthlyRate = rate / 12.0; // 월 이율
-
-        log.debug("적금 이자 계산 - 월납입액: {}원, 연이율: {}%, 납입횟수: {}회, 유형: {}",
-                monthlyPayment, yearlyRate, paymentCount, rateType == 'S' ? "단리" : "복리");
-
+        double rate = yearlyRate.doubleValue() / 100.0;
+        double dailyRate = rate / 365.0;
         long totalInterest = 0;
 
-        // 각 납입월별로 이자 계산
-        for (int i = 1; i <= paymentCount; i++) {
-            int remainingMonths = paymentCount - i + 1; // 해당 납입액이 이자를 받을 개월수
+        log.debug("적금 이자 계산 시작 - 월납입액: {}원, 연이율: {}%, 납입횟수: {}회",
+                monthlyPayment, yearlyRate, currentPaymentCount);
 
+        // 각 납입회차별로 이자 계산
+        for (int i = 1; i <= currentPaymentCount; i++) {
+            // 각 납입회차의 실제 납입일 계산 (계약일 + i개월)
+            LocalDate paymentDate = contractDate.plusMonths(i);
+
+            // 해당 납입액의 실제 운용기간 계산
+            LocalDate endDate = currentDate.isBefore(maturityDate) ? currentDate : maturityDate;
+            long daysFromPayment = paymentDate.until(endDate).getDays();
+
+            if (daysFromPayment <= 0) continue; // 아직 운용기간이 없는 경우
+
+            long monthlyInterest;
             if (rateType == 'S') { // 단리
-                long monthlyInterest = Math.round(monthlyPayment * monthlyRate * remainingMonths);
-                totalInterest += monthlyInterest;
-                log.debug("{}회차 납입 단리: {}원 ({}개월)", i, monthlyInterest, remainingMonths);
+                monthlyInterest = Math.round(monthlyPayment * dailyRate * daysFromPayment);
             } else { // 복리
-                double compound = Math.pow(1 + monthlyRate, remainingMonths);
-                long monthlyInterest = Math.round(monthlyPayment * (compound - 1));
-                totalInterest += monthlyInterest;
-                log.debug("{}회차 납입 복리: {}원 ({}개월, 복리계수: {})", i, monthlyInterest, remainingMonths, compound);
+                double compound = Math.pow(1 + dailyRate, daysFromPayment);
+                monthlyInterest = Math.round(monthlyPayment * (compound - 1));
             }
+
+            totalInterest += monthlyInterest;
+
+            log.debug("{}회차 납입 - 납입일: {}, 운용일수: {}일, 이자: {}원",
+                    i, paymentDate, daysFromPayment, monthlyInterest);
         }
 
         log.debug("적금 총 이자 계산 결과: {}원", totalInterest);

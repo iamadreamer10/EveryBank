@@ -164,12 +164,6 @@ export default function SignupPage() {
                                 placeholder="닉네임 입력"
                                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-bank-primary focus:border-transparent"
                             />
-                            <button
-                                type="button"
-                                className="px-4 py-2 bg-bank-primary text-white text-sm font-medium rounded-md hover:bg-bank-dark focus:outline-none focus:ring-2 focus:ring-bank-primary"
-                            >
-                                닉네임 중복
-                            </button>
                         </div>
                     </div>
 
