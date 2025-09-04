@@ -4,7 +4,7 @@ interface ProductTabsProps {
 }
 
 export default function ProductTabs({ selectedTab, onTabChange }: ProductTabsProps) {
-    const tabs = ['정기예금상품', '적금상품', '비교하기'];
+    const tabs = ['정기예금상품', '적금상품'];
 
     return (
         <div className="mb-6">

@@ -29,7 +29,7 @@ public class ContractController {
         return BaseResponse.success(SuccessCode.CREATE_SUCCESS, depositContract);
     }
 
-    @PostMapping("/saving")
+    @PostMapping("/savings")
     public ResponseEntity<BaseResponse<SavingSubscriptionResponseDto>> subscribeSaving(@RequestBody SavingSubscriptionRequestDto requestDto,
                                                                                        @AuthenticationPrincipal SecurityUser securityUser) {
         SavingSubscriptionResponseDto savingContract = contractService.subscribeSaving(requestDto, securityUser);

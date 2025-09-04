@@ -25,7 +25,7 @@ public class FinCompanyController {
 
     private final FinCompanyRepository finCompanyRepository;
 
-    @GetMapping("")
+    @GetMapping()
     public ResponseEntity<BaseResponse<List<CompanyResponseDto>>> getCompany(@AuthenticationPrincipal SecurityUser securityUser) {
         log.info("SecurityUser={}", securityUser);
         List<CompanyResponseDto> companies = finCompanyRepository.findAll().stream()

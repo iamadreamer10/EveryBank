@@ -159,7 +159,7 @@ export default function AccountTransactionModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
              onClick={(e) => e.target === e.currentTarget && onClose()}>
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
                 <div className="flex items-center justify-between p-6 border-b">

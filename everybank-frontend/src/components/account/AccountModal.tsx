@@ -118,7 +118,7 @@ export default function AccountModal({ isOpen, onClose, onSubmit, title }: Accou
 
     return (
         <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-50"
             onClick={handleBackdropClick}
         >
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">

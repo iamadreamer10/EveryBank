@@ -31,7 +31,7 @@ async function createDepositContract(contractData: ContractRequest): Promise<Con
 
 // 적금 가입 API
 async function createSavingContract(contractData: ContractRequest): Promise<Contract> {
-    const response = await fetch(`http://localhost:8080/contract/saving`, {
+    const response = await fetch(`http://localhost:8080/contract/savings`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${sessionStorage.getItem('accessToken')}`,
