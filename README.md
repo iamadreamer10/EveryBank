@@ -190,9 +190,9 @@
 
 ### 3. API 문서
 
-![API 명세2](./assets/API 명세2-1757084077822-3.png)
+![API 명세2](./assets/API 명세2.png)
 
-![API 명세](./assets/API 명세-1757084069146-1.png)
+![API 명세](./assets/API 명세.png)
 
 - Postman으로 API 명세서 개발
 
