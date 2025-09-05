@@ -189,10 +189,8 @@
 
 
 ### 3. API 문서
-
-![API 명세2](./assets/API 명세2.png)
-
-![API 명세](./assets/API 명세.png)
+<img width="1118" height="775" alt="API 명세2" src="https://github.com/user-attachments/assets/2f583d62-52c8-41b7-a437-e2aa8eeedf8d" />
+<img width="1118" height="444" alt="API 명세" src="https://github.com/user-attachments/assets/a465e7da-1c3e-4ca7-b57b-7d58759c36c4" />
 
 - Postman으로 API 명세서 개발
 
