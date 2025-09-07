@@ -18,4 +18,10 @@ public interface SavingContractRepository extends JpaRepository<SavingContract, 
             "WHERE sc.accountId IN :accountIds")
     List<SavingContract> findByAccountIdIn(@Param("accountIds") List<Integer> accountIds);
 
+
+    @Query("SELECT sc FROM SavingContract sc " +
+            "JOIN FETCH sc.savingProduct sp " +
+            "JOIN FETCH sc.savingProductOption spo " +
+            "WHERE sc.accountId = :accountId")
+    Optional<SavingContract> findByAccountIdWithJoinFetch(@Param("accountId") Integer accountId);
 }

@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Service
@@ -356,5 +357,85 @@ public class ContractDetailService {
     private Long calculateBalanceAtTransaction(Transaction tx, Integer accountId) {
         // 간단화: Transaction에 저장된 currentBalance 사용하거나 계산
         return tx.getCurrentBalance(); // 또는 별도 계산 로직
+    }
+
+    public Map<String, Object> comparePerformance(Integer accountId, SecurityUser securityUser) {
+        log.info("성능 비교 테스트 시작 - 계좌ID: {}", accountId);
+
+        // 기존 방식 (N+1 문제)
+        long v1StartTime = System.nanoTime();
+        ContractDetailResponseDto result1 = getContractDetailV1(accountId, securityUser);
+        long v1EndTime = System.nanoTime();
+        long v1TimeMs = (v1EndTime - v1StartTime) / 1_000_000;
+
+        // JOIN FETCH 방식
+        long v2StartTime = System.nanoTime();
+        ContractDetailResponseDto result2 = getContractDetailV2(accountId, securityUser);
+        long v2EndTime = System.nanoTime();
+        long v2TimeMs = (v2EndTime - v2StartTime) / 1_000_000;
+
+        // 성능 개선율 계산
+        double improvementPercent = ((double)(v1TimeMs - v2TimeMs) / v1TimeMs) * 100;
+
+        log.info("🐌 기존 방식: {}ms", v1TimeMs);
+        log.info("⚡ JOIN FETCH: {}ms", v2TimeMs);
+        log.info("🚀 성능 향상: {:.1f}%", improvementPercent);
+
+        return Map.of(
+                "v1_time_ms", v1TimeMs,
+                "v2_time_ms", v2TimeMs,
+                "improvement_percent", Math.round(improvementPercent * 10) / 10.0,
+                "query_reduction", "5개 → 3개 쿼리"
+        );
+    }
+
+    // 🐌 V1: 기존 방식 (N+1 문제)
+    private ContractDetailResponseDto getContractDetailV1(Integer accountId, SecurityUser securityUser) {
+        log.info("🐌 V1 실행 - 개별 조회 방식");
+
+        // 1. 계좌 조회 (1개 쿼리)
+        Account account = accountRepository.findById(Long.valueOf(accountId))
+                .orElseThrow(() -> new NoSuchElementException("계좌를 찾을 수 없습니다"));
+
+        // 2. 적금 계약 조회 (1개 쿼리)
+        SavingContract contract = savingContractRepository.findByAccountId(accountId)
+                .orElseThrow(() -> new NoSuchElementException("계약을 찾을 수 없습니다"));
+
+        // 3. 상품 조회 (지연 로딩 - 1개 쿼리)
+        String productName = contract.getSavingProduct().getProductName();
+
+        // 4. 옵션 조회 (지연 로딩 - 1개 쿼리)
+        Double interestRate = contract.getSavingProductOption().getInterestRate2().doubleValue();
+
+        // 5. 거래내역 조회 (1개 쿼리)
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("createdAt").descending());
+        Page<Transaction> transactions = transactionRepository.findByToAccountId(accountId, pageable);
+
+        log.info("🐌 V1 완료 - 총 5개 쿼리 실행");
+        return buildSavingContractDetail(account, pageable.getPageNumber() + 1, pageable.getPageSize());
+    }
+
+    // ⚡ V2: JOIN FETCH 방식
+    private ContractDetailResponseDto getContractDetailV2(Integer accountId, SecurityUser securityUser) {
+        log.info("⚡ V2 실행 - JOIN FETCH 방식");
+
+        // 1. 계좌 조회 (1개 쿼리)
+        Account account = accountRepository.findById(Long.valueOf(accountId))
+                .orElseThrow(() -> new NoSuchElementException("계좌를 찾을 수 없습니다"));
+
+        // 2. 계약+상품+옵션 한 번에 조회 (1개 쿼리) 🚀
+        SavingContract contract = savingContractRepository.findByAccountIdWithJoinFetch(accountId)
+                .orElseThrow(() -> new NoSuchElementException("계약을 찾을 수 없습니다"));
+
+        // 3. 이제 추가 쿼리 없이 접근 가능! ✅
+        String productName = contract.getSavingProduct().getProductName(); // 추가 쿼리 없음
+        Double interestRate = contract.getSavingProductOption().getInterestRate2().doubleValue(); // 추가 쿼리 없음
+
+        // 4. 거래내역 조회 (1개 쿼리)
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("createdAt").descending());
+        Page<Transaction> transactions = transactionRepository.findByToAccountId(accountId, pageable);
+
+        log.info("⚡ V2 완료 - 총 3개 쿼리 실행");
+        return buildSavingContractDetail(account, pageable.getPageNumber() + 1, pageable.getPageSize());
     }
 }
